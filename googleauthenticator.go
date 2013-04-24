@@ -49,6 +49,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Add("Access-Control-Allow-Origin", "*")
 	if _, err := io.WriteString(w, code); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
