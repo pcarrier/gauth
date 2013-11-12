@@ -4,24 +4,28 @@ import (
 	"crypto/hmac"
 	"crypto/sha1"
 	"encoding/base32"
+	"encoding/json"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"log"
 	"math/big"
-	"net/http"
-	"os"
+	"os/user"
+	"path"
 	"strings"
 	"time"
 )
 
-func authCode(sec string) (string, error) {
+func TimeStamp() int64 {
+	return time.Now().Unix() / 30
+}
+
+func AuthCode(sec string, ts int64) (string, error) {
 	normalizedSec := strings.ToUpper(strings.Replace(sec, " ", "", -1))
 	key, err := base32.StdEncoding.DecodeString(normalizedSec)
 	if err != nil {
 		return "", err
 	}
 	enc := hmac.New(sha1.New, key)
-	ts := time.Now().Unix() / 30
 	msg := make([]byte, 8, 8)
 	msg[0] = (byte)(ts >> (7 * 8) & 0xff)
 	msg[1] = (byte)(ts >> (6 * 8) & 0xff)
@@ -42,25 +46,40 @@ func authCode(sec string) (string, error) {
 	return fmt.Sprintf("%06d", res), nil
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	sec := r.URL.Path[1:]
-	code, err := authCode(sec)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+func authCodeOrDie(sec string, ts int64) string {
+	str, e := AuthCode(sec, ts)
+	if e != nil {
+		log.Fatal(e)
 	}
-	w.Header().Add("Access-Control-Allow-Origin", "*")
-	if _, err := io.WriteString(w, code); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	return str
 }
 
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	user, e := user.Current()
+	if e != nil {
+		log.Fatal(e)
 	}
-	http.HandleFunc("/", handler)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	cfg_path := path.Join(user.HomeDir, ".config/gauth.json")
+
+	conf_content, e := ioutil.ReadFile(cfg_path)
+	if e != nil {
+		log.Fatal(e)
+	}
+
+	var cfg map[string]string
+	e = json.Unmarshal(conf_content, &cfg)
+	if e != nil {
+		log.Fatal(e)
+	}
+
+	currentTS := TimeStamp()
+	prevTS := currentTS - 1
+	nextTS := currentTS + 1
+
+	for name, secret := range cfg {
+		prevToken := authCodeOrDie(secret, prevTS)
+		currentToken := authCodeOrDie(secret, currentTS)
+		nextToken := authCodeOrDie(secret, nextTS)
+		fmt.Printf("%-10s %s %s %s\n", name, prevToken, currentToken, nextToken)
+	}
 }
