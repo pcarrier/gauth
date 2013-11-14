@@ -1,10 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha1"
 	"encoding/base32"
-	"encoding/json"
+	"encoding/csv"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -69,15 +70,18 @@ func main() {
 	if e != nil {
 		log.Fatal(e)
 	}
-	cfg_path := path.Join(user.HomeDir, ".config/gauth.json")
+	cfgPath := path.Join(user.HomeDir, ".config/gauth.csv")
 
-	conf_content, e := ioutil.ReadFile(cfg_path)
+	cfgContent, e := ioutil.ReadFile(cfgPath)
 	if e != nil {
 		log.Fatal(e)
 	}
 
-	var cfg map[string]string
-	e = json.Unmarshal(conf_content, &cfg)
+	cfgReader := csv.NewReader(bytes.NewReader(cfgContent))
+	// Unix-style tabular
+	cfgReader.Comma = ':'
+
+	cfg, e := cfgReader.ReadAll()
 	if e != nil {
 		log.Fatal(e)
 	}
@@ -87,8 +91,9 @@ func main() {
 	nextTS := currentTS + 1
 
 	fmt.Println("           prev   curr   next")
-	for name, rawSecret := range cfg {
-		secret := normalizeSecret(rawSecret)
+	for _, record := range cfg {
+		name := record[0]
+		secret := normalizeSecret(record[1])
 		prevToken := authCodeOrDie(secret, prevTS)
 		currentToken := authCodeOrDie(secret, currentTS)
 		nextToken := authCodeOrDie(secret, nextTS)

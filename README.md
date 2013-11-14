@@ -12,14 +12,12 @@ Usage
 -----
 
 - In web interfaces, pretend you can't read QR codes, get a secret like `hret 3ij7 kaj4 2jzg` instead.
-- Store your secrets as a JSON object in `~/.config/gauth.json`, for example:
+- Store one secrets per line in `~/.config/gauth.csv`, in the format `name:secret`, for example:
 
-        {
-          "AWS":    "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
-          "Airbnb": "abcdefghijklmnop",
-          "Google": "a2b3c4d5e6f7g8h9",
-          "Github": "234567qrstuvwxyz"
-        }
+        AWS:ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567
+        Airbnb:abcdefghijklmnop
+        Google:a2b3c4d5e6f7g8h9
+        Github:234567qrstuvwxyz
 
 - Restrict access to your user:
 
