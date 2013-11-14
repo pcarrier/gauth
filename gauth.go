@@ -16,13 +16,22 @@ import (
 )
 
 func TimeStamp() (int64, int) {
-        time := time.Now().Unix()
-	return time / 30, int(time % 30);
+	time := time.Now().Unix()
+	return time / 30, int(time % 30)
+}
+
+func normalizeSecret(sec string) string {
+	noPadding := strings.ToUpper(strings.Replace(sec, " ", "", -1))
+	padLength := 8 - (len(noPadding) % 8)
+	if padLength < 8 {
+		return noPadding + strings.Repeat("=", padLength)
+	} else {
+		return noPadding
+	}
 }
 
 func AuthCode(sec string, ts int64) (string, error) {
-	normalizedSec := strings.ToUpper(strings.Replace(sec, " ", "", -1))
-	key, err := base32.StdEncoding.DecodeString(normalizedSec)
+	key, err := base32.StdEncoding.DecodeString(sec)
 	if err != nil {
 		return "", err
 	}
@@ -77,12 +86,13 @@ func main() {
 	prevTS := currentTS - 1
 	nextTS := currentTS + 1
 
-        fmt.Println("           prev   curr   next");
-	for name, secret := range cfg {
+	fmt.Println("           prev   curr   next")
+	for name, rawSecret := range cfg {
+		secret := normalizeSecret(rawSecret)
 		prevToken := authCodeOrDie(secret, prevTS)
 		currentToken := authCodeOrDie(secret, currentTS)
 		nextToken := authCodeOrDie(secret, nextTS)
 		fmt.Printf("%-10s %s %s %s\n", name, prevToken, currentToken, nextToken)
 	}
-        fmt.Printf("[%-29s]\n", strings.Repeat("=", progress));
+	fmt.Printf("[%-29s]\n", strings.Repeat("=", progress))
 }
