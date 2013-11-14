@@ -15,8 +15,9 @@ import (
 	"time"
 )
 
-func TimeStamp() int64 {
-	return time.Now().Unix() / 30
+func TimeStamp() (int64, int) {
+        time := time.Now().Unix()
+	return time / 30, int(time % 30);
 }
 
 func AuthCode(sec string, ts int64) (string, error) {
@@ -72,14 +73,16 @@ func main() {
 		log.Fatal(e)
 	}
 
-	currentTS := TimeStamp()
+	currentTS, progress := TimeStamp()
 	prevTS := currentTS - 1
 	nextTS := currentTS + 1
 
+        fmt.Println("           prev   curr   next");
 	for name, secret := range cfg {
 		prevToken := authCodeOrDie(secret, prevTS)
 		currentToken := authCodeOrDie(secret, currentTS)
 		nextToken := authCodeOrDie(secret, nextTS)
 		fmt.Printf("%-10s %s %s %s\n", name, prevToken, currentToken, nextToken)
 	}
+        fmt.Printf("[%-29s]\n", strings.Repeat("=", progress));
 }
