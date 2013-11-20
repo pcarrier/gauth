@@ -35,6 +35,28 @@ Usage
 
 - Remember to keep your system clock synchronized and to **lock your computer when brewing your tea!**
 
+Compatibility
+-------------
+
+Tested and relied upon for:
+
+- LastPass
+- Airbnb
+- AWS
+- Google
+- Microsoft
+- Apple
+- Github
+- Dropbox
+- Evernote
+- Linode
+- Gandi
+- DreamHost
+- Facebook
+- WP.com
+
+Please report further results to pierre@gcarrier.fr.
+
 Rooted Android?
 ---------------
 
