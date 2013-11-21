@@ -2,8 +2,12 @@ package main
 
 import (
 	"bytes"
+	"code.google.com/p/gopass"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/base32"
 	"encoding/csv"
 	"fmt"
@@ -75,6 +79,35 @@ func main() {
 	cfgContent, e := ioutil.ReadFile(cfgPath)
 	if e != nil {
 		log.Fatal(e)
+	}
+
+	// Support for 'openssl enc -aes-128-cbc -md sha256 -pass pass:'
+	if bytes.Compare(cfgContent[:8], []byte{0x53, 0x61, 0x6c, 0x74, 0x65, 0x64, 0x5f, 0x5f}) == 0 {
+		passwd, e := gopass.GetPass("Encryption password: ")
+		if e != nil {
+			log.Fatal(e)
+		}
+		salt := cfgContent[8:16]
+		rest := cfgContent[16:]
+		salting := sha256.New()
+		salting.Write([]byte(passwd))
+		salting.Write(salt)
+		sum := salting.Sum(nil)
+		key := sum[:16]
+		iv := sum[16:]
+		block, e := aes.NewCipher(key)
+		if e != nil {
+			log.Fatal(e)
+		}
+
+		mode := cipher.NewCBCDecrypter(block, iv)
+		mode.CryptBlocks(rest, rest)
+		// Remove padding
+		i := len(rest)
+		for rest[i] < 16 {
+			i--
+		}
+		cfgContent = rest[:i]
 	}
 
 	cfgReader := csv.NewReader(bytes.NewReader(cfgContent))

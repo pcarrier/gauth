@@ -25,7 +25,7 @@ Usage
 
 - Run `gauth`. The progress bar indicates how far the next change is.
 
-        ~$ gauth
+        $ gauth
                    prev   curr   next
         AWS        315306 135387 483601
         Airbnb     563728 339206 904549
@@ -33,7 +33,30 @@ Usage
         Github     911264 548790 784099
         [=======                      ]
 
+- `gauth` is convenient to use in `watch`.
+
+        $ watch -n1 gauth
+
 - Remember to keep your system clock synchronized and to **lock your computer when brewing your tea!**
+
+Encryption
+----------
+
+`gauth` supports password-based encryption of `gauth.csv`. To encrypt, use:
+
+        $ openssl enc -aes-128-cbc -md sha256 -in gauth.csv -out ~/.config/gauth.csv
+        enter aes-128-cbc encryption password:
+        Verifying - enter aes-128-cbc encryption password:
+
+`gauth` will then prompt you for that password on every run:
+
+        $ gauth
+        Encryption password: 
+                   prev   curr   next
+        LastPass   915200 479333 408710
+
+Note that this encryption mechanism is far from ideal from a pure security standpoint.
+Please read [OpenSSL's notes on the subject](http://www.openssl.org/docs/crypto/EVP_BytesToKey.html#NOTES).
 
 Compatibility
 -------------
