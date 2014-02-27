@@ -30,9 +30,8 @@ func normalizeSecret(sec string) string {
 	padLength := 8 - (len(noPadding) % 8)
 	if padLength < 8 {
 		return noPadding + strings.Repeat("=", padLength)
-	} else {
-		return noPadding
 	}
+	return noPadding
 }
 
 func AuthCode(sec string, ts int64) (string, error) {
