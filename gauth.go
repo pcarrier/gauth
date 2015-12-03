@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"code.google.com/p/gopass"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
@@ -11,12 +10,14 @@ import (
 	"encoding/base32"
 	"encoding/csv"
 	"fmt"
+	"golang.org/x/crypto/ssh/terminal"
 	"io/ioutil"
 	"log"
 	"math/big"
 	"os/user"
 	"path"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -82,7 +83,8 @@ func main() {
 
 	// Support for 'openssl enc -aes-128-cbc -md sha256 -pass pass:'
 	if bytes.Compare(cfgContent[:8], []byte{0x53, 0x61, 0x6c, 0x74, 0x65, 0x64, 0x5f, 0x5f}) == 0 {
-		passwd, e := gopass.GetPass("Encryption password: ")
+		fmt.Printf("Encryption password: ")
+		passwd, e := terminal.ReadPassword(syscall.Stdin)
 		if e != nil {
 			log.Fatal(e)
 		}
@@ -102,7 +104,7 @@ func main() {
 		mode := cipher.NewCBCDecrypter(block, iv)
 		mode.CryptBlocks(rest, rest)
 		// Remove padding
-		i := len(rest)
+		i := len(rest) - 1
 		for rest[i] < 16 {
 			i--
 		}
