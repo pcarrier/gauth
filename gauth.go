@@ -85,6 +85,7 @@ func main() {
 	if bytes.Compare(cfgContent[:8], []byte{0x53, 0x61, 0x6c, 0x74, 0x65, 0x64, 0x5f, 0x5f}) == 0 {
 		fmt.Printf("Encryption password: ")
 		passwd, e := terminal.ReadPassword(syscall.Stdin)
+		fmt.Printf("\n")
 		if e != nil {
 			log.Fatal(e)
 		}
