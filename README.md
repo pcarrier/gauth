@@ -36,20 +36,20 @@ Usage
 - Encrypt it (it will prompt for your password):
 	$ gauth -e
 
-- It creates ~/.config/gauth.pem (default perm 0600) and removes ~/.config/gauth.csv
+- It creates `~/.config/gauth.pem` (default perm 0600) and removes `~/.config/gauth.csv`.
 
-- Run `gauth`, type your password. The progress bar indicates how far the next change is.
+- Run `gauth`, type your password. The progress bar indicates how far the next change is:
 
-	$ gauth
-	password: 
-	account    | prev   curr   next  
-	-------------------------------
-	github     | 312783 436124 570822
-	gmail      | 349274 437823 523780
-	facebook   | 345426 830969 031337
-	aws        | 738308 175551 926454
-	-------------------------------
-	[========================     ]
+        $ gauth
+        password: 
+        account    | prev   curr   next  
+        -------------------------------
+        github     | 312783 436124 570822
+        gmail      | 349274 437823 523780
+        facebook   | 345426 830969 031337
+        aws        | 738308 175551 926454
+        -------------------------------
+        [========================     ]
 
 
 - `gauth` is NOT convenient to use in `watch` anymore.
