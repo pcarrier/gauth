@@ -1,11 +1,8 @@
 package main
 
 import (
-	//"bytes"
-	//"crypto"
 	"crypto/aes"
 	"crypto/cipher"
-	//"crypto/rsa"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"

@@ -11,7 +11,7 @@ added the following:
 - AES-GCM-256/PEM encrypted file by default.
 - create the file with 0600 permissions.
 - delete (unlink()) the plaintext file.
-- display only the one you need based on the argument given.
+- display only the one you want/need based on the argument given.
 
 
 Installation
@@ -51,6 +51,17 @@ Usage
         -------------------------------
         [========================     ]
 
+- Run `gauth facebook`, type your password. It will show you only the case
+  insensitive matching for any records containing `facebook` in its account name.
+
+        $ gauth facebook
+        password: 
+        account    | prev   curr   next  
+        -------------------------------
+        facebook   | 345426 830969 031337
+        -------------------------------
+        [===========================  ]
+
 
 - `gauth` is NOT convenient to use in `watch` anymore.
 - Remember to keep your system clock synchronized and to **lock your computer when brewing your tea!** (eau: that's right)
@@ -58,8 +69,8 @@ Usage
 Encryption
 ----------
 
-it's now by default and uses AES-GCM-256/PEM with additionnal datas (to protect PEM headers) instead of Salted CBC-128,
-it is part of gauth.
+it is now encrypted by default using AES-GCM-256/PEM with additionnal datas (to protect PEM headers) instead of Salted CBC-128.
+Encryption is part of gauth.
 
 `gauth -e` take the current ~/.config/gauth.csv and encrypts it to ~/.config/gauth.pem and remove the plaintext version.
 `gauth -d` if you need to peek/poke in your token file, then `gauth -e` again.
@@ -67,7 +78,7 @@ it is part of gauth.
 gauth TOTP keyfile encryption uses:
 - AEAD Authenticated Encryption Additionnal Data modes (protect the plaintext PEM headers)
 - AES-GCM-256 authenticated encryption mode.
-- 16K rounds PBKDF2 key derivation function.
+- 16K rounds PBKDF2 key derivation function with SHA3-256
 - Crypto PRNG.
 
 Compatibility
@@ -91,7 +102,7 @@ If your Android phone is rooted, it's easy to "back up" your secrets from an `ad
     # sqlite3 /data/data/com.google.android.apps.authenticator2/databases/database \
               'select email,secret from accounts'
 
-(eau-u4f: thanks for the tips!)
+(eau: thanks for the tips!)
 
 Really, does this make sense?
 -----------------------------
@@ -106,4 +117,4 @@ Thanks to the convenience of a command line utility, my usage of 2-factor authen
 
 Clearly a win for security.
 
-(eau-u4f: agreed with pcarrier just made a couple of changes to match my needs and improve the encryption security (hopefully) :))
+(eau: agreed with pcarrier just made a couple of changes to match my needs and improve the encryption security (hopefully) :))
