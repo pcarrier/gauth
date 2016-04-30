@@ -236,6 +236,8 @@ func main() {
 	encryptFlag := flag.Bool("e", false, "encrypt TOTP keyfile (~/.config/gauth.csv -> gauth.pem)")
 	flag.Parse()
 
+	sArgs := flag.Args()
+
 	// trying to encrypt and decrypt at the same time?!
 	if *encryptFlag == true && *decryptFlag == true {
 		fmt.Printf("-e and -d options are mutually exclusive")
@@ -284,7 +286,11 @@ func main() {
 		currentToken := authCodeOrDie(secret, currentTS)
 		nextToken := authCodeOrDie(secret, nextTS)
 		//fmt.Printf("%-10.10s %-6s %-6s %-6s\n", name, prevToken, currentToken, nextToken)
-		fmt.Printf(HDR_FMT, name, prevToken, currentToken, nextToken)
+		if len(sArgs) == 0 {
+			fmt.Printf(HDR_FMT, name, prevToken, currentToken, nextToken)
+		} else if strings.Contains(strings.ToLower(name), strings.ToLower(sArgs[0])) == true {
+			fmt.Printf(HDR_FMT, name, prevToken, currentToken, nextToken)
+		}
 	}
 	fmt.Printf("-------------------------------\n")
 	fmt.Printf("[%-29s]\n", strings.Repeat("=", progress))
