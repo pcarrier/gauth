@@ -5,8 +5,7 @@ gauth: replace Google Authenticator
 
 What is this:
 -------------
-A fork with some mods, I wanted of github.com/pcarrier/gauth
-credits goes to him for the implementation, I'm lazy indeed.
+A fork with some mods, I wanted of `github.com/pcarrier/gauth` credits goes to him for the implementation, I'm lazy indeed.
 
 added the following: 
 - AES-GCM-256/PEM encrypted file by default.
