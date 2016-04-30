@@ -33,7 +33,7 @@ func IsEncryptedPemFile(file string) bool {
 	return x509.IsEncryptedPEMBlock(pemBlockBuf)
 }
 
-// DecryptPEMBlock takes a password encrypted PEM block and the password used to
+// AEADDecryptPEMBlock takes a password encrypted PEM block and the password used to
 // encrypt it and returns a slice of decrypted DER encoded bytes. It inspects
 // the DEK-Info header to determine the algorithm used for decryption. If no
 // DEK-Info header is present, an error is returned. If an incorrect password

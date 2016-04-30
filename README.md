@@ -33,7 +33,7 @@ Usage
         Github:234567qrstuvwxyz
 
 - Encrypt it (it will prompt for your password):
-	$ gauth -e
+        $ gauth -e
 
 - It creates `~/.config/gauth.pem` (default perm 0600) and removes `~/.config/gauth.csv`.
 
