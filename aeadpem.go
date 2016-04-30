@@ -27,6 +27,9 @@ func IsEncryptedPemFile(file string) bool {
 	}
 
 	pemBlockBuf, _ := pem.Decode(fileBuf)
+	if pemBlockBuf == nil {
+		return false
+	}
 	return x509.IsEncryptedPEMBlock(pemBlockBuf)
 }
 

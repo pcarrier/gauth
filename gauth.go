@@ -2,12 +2,9 @@ package main
 
 import (
 	"bytes"
-	//	"crypto/aes"
-	//	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha1"
-	//	"crypto/sha256"
 	"encoding/base32"
 	"encoding/csv"
 	"encoding/pem"
@@ -36,7 +33,7 @@ const (
 	HDR_PREV = "prev"
 	HDR_NEXT = "next"
 	HDR_CURR = "curr"
-	HDR_FMT  = "%-10.10s %-6s %-6s %-6s\n"
+	HDR_FMT  = "%-10.10s | %-6s %-6s %-6s\n"
 )
 
 func TimeStamp() (int64, int) {
@@ -87,6 +84,131 @@ func authCodeOrDie(sec string, ts int64) string {
 	return str
 }
 
+func askPassAndEncryptTotpFile(ofile, ifile string) (err error) {
+	cfgPlainContent, err := ioutil.ReadFile(ifile)
+	if err != nil {
+		return
+	}
+
+	// XXX do the encryption
+	fmt.Printf("password: ")
+	passwd, err := terminal.ReadPassword(syscall.Stdin)
+	if err != nil {
+		return
+	}
+	fmt.Printf("\n")
+
+	fmt.Printf("retype password: ")
+	rpasswd, err := terminal.ReadPassword(syscall.Stdin)
+	if err != nil {
+		return
+	}
+	fmt.Printf("\n")
+
+	if bytes.Compare(passwd, rpasswd) != 0 {
+		err = fmt.Errorf("Passwords don't match\n")
+		return
+	}
+
+	// write the new file
+	cfgContentBlock, err := AEADEncryptPEMBlock(rand.Reader, HDR_PEM, cfgPlainContent, passwd)
+	if err != nil {
+		err = fmt.Errorf("Encryption failure (%s).\n", err.Error())
+		//return fmt.Errorf("encryption problem\n")
+		return
+	}
+
+	cfgPemContent := pem.EncodeToMemory(cfgContentBlock)
+	err = ioutil.WriteFile(ofile, cfgPemContent, 0600)
+	if err != nil {
+		return err
+	}
+
+	err = os.Remove(ifile)
+	if err != nil {
+		fmt.Printf("warning could not remove %s.\n", ifile)
+	}
+
+	fmt.Printf("encrypted to %s\n", ofile)
+	return nil
+}
+
+func askPassAndDecryptTotpFile(ofile, ifile string) (err error) {
+
+	cfgContent, err := ioutil.ReadFile(ifile)
+	if err != nil || IsEncryptedPemFile(ifile) == false {
+		err = fmt.Errorf("Non-existent/Invalid encrypted TOTP keyfile (%s).", err.Error())
+		return
+	}
+
+	cfgPemBlock, _ := pem.Decode(cfgContent)
+	if cfgPemBlock == nil || cfgPemBlock.Type != HDR_PEM {
+		err = fmt.Errorf("Invalid TOTP keyfile PEM Block\n")
+		return
+	}
+
+	fmt.Printf("password: ")
+	passwd, err := terminal.ReadPassword(syscall.Stdin)
+	if err != nil {
+		return
+	}
+	fmt.Printf("\n")
+
+	cfgPlainContent, err := AEADDecryptPEMBlock(cfgPemBlock, passwd)
+	if err != nil {
+		err = fmt.Errorf("Invalid password/encrypted payload (%s)\n", err.Error())
+		return //fmt.Errorf("invalid password\n")
+	}
+
+	err = ioutil.WriteFile(ofile, cfgPlainContent, 0600)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("decrypted to %s\n", ofile)
+	return nil
+}
+
+func authDecryptParseTotpFile(ifile string) (r [][]string, err error) {
+	// decrypt
+	cfgPemContent, err := ioutil.ReadFile(ifile)
+	if err != nil || IsEncryptedPemFile(ifile) == false {
+		err = fmt.Errorf("Non-existent/Invalid encrypted TOTP keyfile (%s).", err.Error())
+		return
+	}
+
+	cfgPemBlock, _ := pem.Decode(cfgPemContent)
+	if cfgPemBlock == nil || cfgPemBlock.Type != HDR_PEM {
+		err = fmt.Errorf("Invalid TOTP keyfile PEM Block\n")
+		return
+	}
+
+	fmt.Printf("password: ")
+	passwd, err := terminal.ReadPassword(syscall.Stdin)
+	if err != nil {
+		return
+	}
+	fmt.Printf("\n")
+
+	cfgContent, err := AEADDecryptPEMBlock(cfgPemBlock, passwd)
+	if err != nil {
+		err = fmt.Errorf("Invalid password/encrypted payload (%s)\n", err.Error())
+		return
+	}
+
+	cfgReader := csv.NewReader(bytes.NewReader(cfgContent))
+	// Unix-style tabular
+	cfgReader.Comma = ':'
+
+	r, err = cfgReader.ReadAll()
+	if err != nil {
+		return
+	}
+
+	return
+
+}
+
 //
 // default, try to open PEM file by default
 // then try the PLAIN file, WARN if plain text.
@@ -99,212 +221,52 @@ func authCodeOrDie(sec string, ts int64) string {
 //
 
 func main() {
-	//var cfgPath string
-
-	user, e := user.Current()
-	if e != nil {
-		log.Fatal(e)
+	user, err := user.Current()
+	if err != nil {
+		log.Fatal(err)
 	}
-	/*
-		cfgPath := path.Join(user.HomeDir, ".config/gauth.csv")
-
-		cfgContent, e := ioutil.ReadFile(cfgPath)
-		if e != nil {
-			log.Fatal(e)
-		}
-	*/
 
 	cfgPem := path.Join(user.HomeDir, CONFIG_PEM)
 	cfgPlain := path.Join(user.HomeDir, CONFIG_PLAIN)
 
-	statPlain, err := os.Stat(cfgPlain)
-	statPem, err := os.Stat(cfgPem)
-
 	// decrypt the file take the pem and generate a csv (truncate).
-	decryptFlag := flag.Bool("d", false, "decrypt config file")
+	decryptFlag := flag.Bool("d", false, "decrypt TOTP keyfile (~/.config/gauth.pem -> gauth.csv)")
 	// if the timestamp of csv is > pem and you can decrypt pem, then
 	// reencrypt the csv and replace pem, otherwise fail.
-	encryptFlag := flag.Bool("e", false, "encrypt config file")
-
+	encryptFlag := flag.Bool("e", false, "encrypt TOTP keyfile (~/.config/gauth.csv -> gauth.pem)")
 	flag.Parse()
-
-	// no config file ?!
-	if statPlain == nil && statPem == nil {
-		panic(fmt.Errorf("no topt token file present"))
-	}
 
 	// trying to encrypt and decrypt at the same time?!
 	if *encryptFlag == true && *decryptFlag == true {
-		cliErr := fmt.Errorf("-e and -d options are mutually exclusive")
-		panic(cliErr)
-
+		fmt.Printf("-e and -d options are mutually exclusive")
+		os.Exit(1)
 	}
 
-	if *decryptFlag == true && statPem != nil {
-		// XXX do the decryption
-		fmt.Printf("password: ")
-		passwd, err := terminal.ReadPassword(syscall.Stdin)
+	if *decryptFlag == true {
+		err := askPassAndDecryptTotpFile(cfgPlain, cfgPem)
 		if err != nil {
-			panic(err)
+			fmt.Println(err)
+			os.Exit(1)
 		}
-		fmt.Printf("\n")
-
-		cfgContent, err := ioutil.ReadFile(cfgPem)
-		if err != nil {
-			panic(err)
-		}
-
-		cfgPemBlock, _ := pem.Decode(cfgContent)
-		if cfgPemBlock == nil || cfgPemBlock.Type != HDR_PEM {
-			panic(fmt.Errorf("invalid PEM Block\n"))
-		}
-
-		cfgPlainContent, err := AEADDecryptPEMBlock(cfgPemBlock, passwd)
-		if err != nil {
-			panic(fmt.Errorf("invalid password\n"))
-		}
-
-		err = ioutil.WriteFile(cfgPlain, cfgPlainContent, 0600)
-		if err != nil {
-			panic(err)
-		}
-
 		os.Exit(0)
 
 	}
 
-	if *encryptFlag == true && statPlain != nil {
-		// XXX do the encryption
-		fmt.Printf("password: ")
-		passwd, err := terminal.ReadPassword(syscall.Stdin)
+	if *encryptFlag == true {
+		err := askPassAndEncryptTotpFile(cfgPem, cfgPlain)
 		if err != nil {
-			panic(err)
+			fmt.Println(err)
+			os.Exit(1)
 		}
-		fmt.Printf("\n")
-
-		// first decrypt and keep the passphrase
-		if statPem != nil && IsEncryptedPemFile(cfgPem) == true {
-			cfgPemContent, err := ioutil.ReadFile(cfgPem)
-			if err != nil {
-				panic(err)
-			}
-
-			cfgPemBlock, _ := pem.Decode(cfgPemContent)
-			if cfgPemBlock == nil || cfgPemBlock.Type != HDR_PEM {
-				panic(fmt.Errorf("invalid PEM Block\n"))
-			}
-
-			_, err = AEADDecryptPEMBlock(cfgPemBlock, passwd)
-			if err != nil {
-				panic(fmt.Errorf("invalid password\n"))
-			}
-
-		} else {
-
-			fmt.Printf("retype password: ")
-			rpasswd, err := terminal.ReadPassword(syscall.Stdin)
-			if err != nil {
-				panic(err)
-			}
-			fmt.Printf("\n")
-
-			if bytes.Compare(passwd, rpasswd) != 0 {
-				panic(fmt.Errorf("password don't match\n"))
-			}
-		}
-
-		cfgPlainContent, err := ioutil.ReadFile(cfgPlain)
-		if err != nil {
-			panic(err)
-		}
-
-		// write the new file
-		cfgContentBlock, err := AEADEncryptPEMBlock(rand.Reader, HDR_PEM, cfgPlainContent, passwd)
-		if err != nil {
-			panic(fmt.Errorf("encryption problem\n"))
-		}
-
-		cfgPemContent := pem.EncodeToMemory(cfgContentBlock)
-		err = ioutil.WriteFile(cfgPem, cfgPemContent, 0600)
-		if err != nil {
-			panic(err)
-		}
-
 		os.Exit(0)
 
 	} // end of if encryptFlag
-	var cfgContent []byte
 
-	// decrypt
-	if statPem != nil && IsEncryptedPemFile(cfgPem) == true {
-		fmt.Printf("password: ")
-		passwd, err := terminal.ReadPassword(syscall.Stdin)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Printf("\n")
-
-		cfgPemContent, err := ioutil.ReadFile(cfgPem)
-		if err != nil {
-			panic(err)
-		}
-
-		cfgPemBlock, _ := pem.Decode(cfgPemContent)
-		if cfgPemBlock == nil || cfgPemBlock.Type != HDR_PEM {
-			panic(fmt.Errorf("invalid PEM Block\n"))
-		}
-
-		cfgContent, err = AEADDecryptPEMBlock(cfgPemBlock, passwd)
-		if err != nil {
-			panic(fmt.Errorf("invalid password\n"))
-		}
-	} else {
-		cfgContent, err = ioutil.ReadFile(cfgPlain)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	// Support for 'openssl enc -aes-128-cbc -md sha256 -pass pass:'
-	/*
-		if bytes.Compare(cfgContent[:8], []byte{0x53, 0x61, 0x6c, 0x74, 0x65, 0x64, 0x5f, 0x5f}) == 0 {
-			fmt.Printf("Encryption password: ")
-			passwd, e := terminal.ReadPassword(syscall.Stdin)
-			fmt.Printf("\n")
-			if e != nil {
-				log.Fatal(e)
-			}
-			salt := cfgContent[8:16]
-			rest := cfgContent[16:]
-			salting := sha256.New()
-			salting.Write([]byte(passwd))
-			salting.Write(salt)
-			sum := salting.Sum(nil)
-			key := sum[:16]
-			iv := sum[16:]
-			block, e := aes.NewCipher(key)
-			if e != nil {
-				log.Fatal(e)
-			}
-
-			mode := cipher.NewCBCDecrypter(block, iv)
-			mode.CryptBlocks(rest, rest)
-			// Remove padding
-			i := len(rest) - 1
-			for rest[i] < 16 {
-				i--
-			}
-			cfgContent = rest[:i]
-		}
-	*/
-
-	cfgReader := csv.NewReader(bytes.NewReader(cfgContent))
-	// Unix-style tabular
-	cfgReader.Comma = ':'
-
-	cfg, e := cfgReader.ReadAll()
-	if e != nil {
-		log.Fatal(e)
+	// default behaviour
+	cfg, err := authDecryptParseTotpFile(cfgPem)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
 	currentTS, progress := TimeStamp()
@@ -314,6 +276,7 @@ func main() {
 	//fmt.Println("           prev   curr   next")
 	//fmt.Printf("%-10.10s %-6s %-6s %-6s\n", "account", "prev", "curr", "next")
 	fmt.Printf(HDR_FMT, HDR_ACCT, HDR_PREV, HDR_CURR, HDR_NEXT)
+	fmt.Printf("-------------------------------\n")
 	for _, record := range cfg {
 		name := record[0]
 		secret := normalizeSecret(record[1])
@@ -323,5 +286,6 @@ func main() {
 		//fmt.Printf("%-10.10s %-6s %-6s %-6s\n", name, prevToken, currentToken, nextToken)
 		fmt.Printf(HDR_FMT, name, prevToken, currentToken, nextToken)
 	}
+	fmt.Printf("-------------------------------\n")
 	fmt.Printf("[%-29s]\n", strings.Repeat("=", progress))
 }
