@@ -63,7 +63,7 @@ Please read [OpenSSL's notes on the subject](http://www.openssl.org/docs/crypto/
 Compatibility
 -------------
 
-Tested and relied upon for:
+Tested with:
 
 - Airbnb
 - Apple
@@ -78,6 +78,7 @@ Tested and relied upon for:
 - LastPass
 - Linode
 - Microsoft
+- Okta (reported by Bryan Baldwin)
 - WP.com
 
 Please report further results to pierre@gcarrier.fr.
