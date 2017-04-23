@@ -3,10 +3,12 @@
 gauth: replace Google Authenticator
 ===================================
 
+**ADD ANSI COLOR SUPPORT**
+
 Installation
 ------------
 
-With a Go environment already set up, it should be as easy as `go get github.com/pcarrier/gauth`.
+With a Go environment already set up, it should be as easy as `go get github.com/tuxmartin/gauth`.
 
 *Eg,* with `GOPATH=$HOME/go`, it will create a binary `$HOME/go/bin/gauth`.
 
