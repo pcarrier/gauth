@@ -132,7 +132,9 @@ func main() {
 		prevToken := authCodeOrDie(secret, prevTS)
 		currentToken := authCodeOrDie(secret, currentTS)
 		nextToken := authCodeOrDie(secret, nextTS)
-		fmt.Printf("%-10s %s %s %s\n", name, prevToken, currentToken, nextToken)
+		fmt.Printf("%-10s %s \033[31m\033[1m%s \033[0m\033[32m%s \033[0m\n", name, prevToken, currentToken, nextToken)
+		// bash test:  echo -e "PREV \e[31m \e[1m CURR \e[0m \e[32m NEXT \e[0m"
+		// bash test:  echo -e "PREV \033[31m \033[1m CURR \033[0m \033[32m NEXT\033[0m"
 	}
 	fmt.Printf("[%-29s]\n", strings.Repeat("=", progress))
 }
