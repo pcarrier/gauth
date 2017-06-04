@@ -80,6 +80,8 @@ Tested with:
 - Microsoft
 - Okta (reported by Bryan Baldwin)
 - WP.com
+- bittrex.com
+- poloniex.com
 
 Please report further results to pierre@gcarrier.fr.
 
