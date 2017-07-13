@@ -19,6 +19,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"os"
 )
 
 func TimeStamp() (int64, int) {
@@ -67,6 +68,60 @@ func authCodeOrDie(sec string, ts int64) string {
 		log.Fatal(e)
 	}
 	return str
+}
+
+func PrintHeader() {
+	fmt.Println("           prev   curr   next")
+}
+
+func PrintBar(progress int) {
+	fmt.Printf("[%-29s]\n", strings.Repeat("=", progress))
+}
+
+func PrintRecord(record []string, currentTS int64) {
+		prevTS := currentTS - 1
+		nextTS := currentTS + 1
+		name := record[0]
+		secret := normalizeSecret(record[1])
+		prevToken := authCodeOrDie(secret, prevTS)
+		currentToken := authCodeOrDie(secret, currentTS)
+		nextToken := authCodeOrDie(secret, nextTS)
+		fmt.Printf("%-10s %s %s %s\n", name, prevToken, currentToken, nextToken)
+}
+
+func PrintRecordSecretOnly(record []string, currentTS int64) {
+		secret := normalizeSecret(record[1])
+		currentToken := authCodeOrDie(secret, currentTS)
+		fmt.Printf("%s\n", currentToken)
+}
+
+
+func PrintAll(cfg [][]string)(){
+	currentTS, progress := TimeStamp()
+	PrintHeader()
+	for _, record := range cfg {
+			PrintRecord(record, currentTS)
+	}
+	PrintBar(progress)
+}
+
+func PrintSingle(cfg [][]string, name string) {
+	currentTS, progress := TimeStamp()
+	found := true
+	for _, record := range cfg {
+    if name == record[0] {
+			if terminal.IsTerminal(int(os.Stdout.Fd())) {
+				PrintHeader()
+				PrintRecord(record, currentTS)
+				PrintBar(progress)
+			}else{
+				PrintRecordSecretOnly(record, currentTS)
+			}
+    }
+	}
+	if !found {
+		log.Fatalf("Token %s not found\n", name)
+	}
 }
 
 func main() {
@@ -121,18 +176,9 @@ func main() {
 		log.Fatal(e)
 	}
 
-	currentTS, progress := TimeStamp()
-	prevTS := currentTS - 1
-	nextTS := currentTS + 1
-
-	fmt.Println("           prev   curr   next")
-	for _, record := range cfg {
-		name := record[0]
-		secret := normalizeSecret(record[1])
-		prevToken := authCodeOrDie(secret, prevTS)
-		currentToken := authCodeOrDie(secret, currentTS)
-		nextToken := authCodeOrDie(secret, nextTS)
-		fmt.Printf("%-10s %s %s %s\n", name, prevToken, currentToken, nextToken)
+	if(len(os.Args) > 1){
+		PrintSingle(cfg, os.Args[1])
+	}else{
+		PrintAll(cfg)
 	}
-	fmt.Printf("[%-29s]\n", strings.Repeat("=", progress))
 }
