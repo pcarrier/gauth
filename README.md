@@ -21,6 +21,13 @@ Usage
         Google:a2b3c4d5e6f7g8h9
         Github:234567qrstuvwxyz
 
+- Optionally, the line can also specify a TOTP encoding and computation. For example
+
+        AWS:   ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567:TOTP
+        Airbnb:abcd efgh ijkl mnop:TOTP
+        Steam account:a2b3c4d5e6f7g8h9:Steam
+        Github:234567qrstuvwxyz:TOTP
+
 - Restrict access to your user:
 
         $ chmod 600 ~/.config/gauth.csv
@@ -79,6 +86,7 @@ Tested with:
 - Linode
 - Microsoft
 - Okta (reported by Bryan Baldwin)
+- Steam
 - WP.com
 
 Please report further results to pierre@gcarrier.fr.
