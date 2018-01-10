@@ -8,6 +8,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/base32"
+	"encoding/binary"
 	"encoding/csv"
 	"fmt"
 	"golang.org/x/crypto/ssh/terminal"
@@ -35,7 +36,7 @@ func normalizeSecret(sec string) string {
 	return noPadding
 }
 
-func AuthCode(sec string, ts int64) (string, error) {
+func AuthCode(sec string, ts int64, encodeType string) (string, error) {
 	key, err := base32.StdEncoding.DecodeString(sec)
 	if err != nil {
 		return "", err
@@ -57,12 +58,28 @@ func AuthCode(sec string, ts int64) (string, error) {
 	offset := hash[19] & 0x0f
 	trunc := hash[offset : offset+4]
 	trunc[0] &= 0x7F
-	res := new(big.Int).Mod(new(big.Int).SetBytes(trunc), big.NewInt(1000000))
-	return fmt.Sprintf("%06d", res), nil
+	if strings.TrimSpace(encodeType) == "Steam" {
+		steamChars := "23456789BCDFGHJKMNPQRTVWXY"
+		steamCharsLen := int32(len(steamChars))
+		var res int32
+		if err = binary.Read(bytes.NewReader(trunc), binary.BigEndian, &res); err != nil {
+			return "", err
+		}
+		hotp := make([]byte, 5, 5)
+		for i := 0; i < 5;  i++ {
+			idx := res % steamCharsLen
+			hotp[i] = steamChars[int(idx)]
+			res = res / steamCharsLen
+		}
+		return string(hotp), nil
+	} else {
+		res := new(big.Int).Mod(new(big.Int).SetBytes(trunc), big.NewInt(1000000))
+		return fmt.Sprintf("%06d", res), nil
+	}
 }
 
-func authCodeOrDie(sec string, ts int64) string {
-	str, e := AuthCode(sec, ts)
+func authCodeOrDie(sec string, ts int64, encodeType string) string {
+	str, e := AuthCode(sec, ts, encodeType)
 	if e != nil {
 		log.Fatal(e)
 	}
@@ -128,11 +145,15 @@ func main() {
 	fmt.Println("           prev   curr   next")
 	for _, record := range cfg {
 		name := record[0]
+		encodeType := "TOTP"
+		if len(record) > 2 {
+			encodeType = record[2]
+		}
 		secret := normalizeSecret(record[1])
-		prevToken := authCodeOrDie(secret, prevTS)
-		currentToken := authCodeOrDie(secret, currentTS)
-		nextToken := authCodeOrDie(secret, nextTS)
-		fmt.Printf("%-10s %s %s %s\n", name, prevToken, currentToken, nextToken)
+		prevToken := authCodeOrDie(secret, prevTS, encodeType)
+		currentToken := authCodeOrDie(secret, currentTS, encodeType)
+		nextToken := authCodeOrDie(secret, nextTS, encodeType)
+		fmt.Printf("%-10s % 6s % 6s % 6s\n", name, prevToken, currentToken, nextToken)
 	}
 	fmt.Printf("[%-29s]\n", strings.Repeat("=", progress))
 }
