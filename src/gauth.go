@@ -131,23 +131,28 @@ func main() {
 	prevTS := currentTS - 1
 	nextTS := currentTS + 1
 
-	maxWidth := 10
+	wordSize := 0
  	for _, record := range cfg {
- 		cWidth := len(record[0])
- 		if cWidth > maxWidth {
- 			maxWidth = cWidth
+ 		actualSize := len([]rune(record[0]))
+ 		if actualSize > wordSize {
+ 			wordSize = actualSize
  		}
  	}
- 	nameFmt := fmt.Sprintf("%%-%ds", maxWidth)
 
- 	fmt.Printf(nameFmt+" prev   curr   next\n", "")
+ 	var header = "prev   curr   next"
+ 	fmt.Println(leftPad(header, " ", wordSize+1))
 	for _, record := range cfg {
 		name := record[0]
 		secret := normalizeSecret(record[1])
 		prevToken := authCodeOrDie(secret, prevTS)
 		currentToken := authCodeOrDie(secret, currentTS)
 		nextToken := authCodeOrDie(secret, nextTS)
-		fmt.Printf(nameFmt+" %s %s %s\n", name, prevToken, currentToken, nextToken)
+		fmt.Printf("%-*s %s %s %s\n", wordSize, name, prevToken, currentToken, nextToken)
 	}
 	fmt.Printf("[%-29s]\n", strings.Repeat("=", progress))
 }
+
+func leftPad(s string, padStr string, pLen int) string {
+	return strings.Repeat(padStr, pLen) + s
+}
+
