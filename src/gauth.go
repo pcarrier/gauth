@@ -76,11 +76,13 @@ func main() {
 		log.Fatal(e)
 	}
 
-	configPtr := flag.String("config", path.Join(user.HomeDir, ".config/gauth.csv"), "Absolute path to config file to use")
+	var configPtr string
+	flag.StringVar(&configPtr, "config", path.Join(user.HomeDir, ".config/gauth.csv"), "Absolute path to config file to use")
+	
 	flag.Parse()
-	
-	cfgPath := path.Join("", *configPtr)
-	
+	sArgs := flag.Args()
+
+	cfgPath := path.Join("", configPtr)
 	
 	cfgContent, e := ioutil.ReadFile(cfgPath)
 	if e != nil {
@@ -133,10 +135,17 @@ func main() {
 
 	wordSize := 0
  	for _, record := range cfg {
- 		actualSize := len([]rune(record[0]))
+		// Only include the ones that are provided in the search result
+		var actualSize int
+		if len(sArgs) == 0 {
+			actualSize = len([]rune(record[0]))
+		} else if strings.Contains(strings.ToLower(record[0]), strings.ToLower(sArgs[0])) == true {
+			actualSize = len([]rune(record[0]))
+		}
+
  		if actualSize > wordSize {
  			wordSize = actualSize
- 		}
+		}
  	}
 
  	var header = "prev   curr   next"
@@ -147,7 +156,13 @@ func main() {
 		prevToken := authCodeOrDie(secret, prevTS)
 		currentToken := authCodeOrDie(secret, currentTS)
 		nextToken := authCodeOrDie(secret, nextTS)
-		fmt.Printf("%-*s %s %s %s\n", wordSize, name, prevToken, currentToken, nextToken)
+
+		if len(sArgs) == 0 {
+			fmt.Printf("%-*s %s %s %s\n", wordSize, name, prevToken, currentToken, nextToken)
+		} else if strings.Contains(strings.ToLower(name), strings.ToLower(sArgs[0])) == true {
+			fmt.Printf("%-*s %s %s %s\n", wordSize, name, prevToken, currentToken, nextToken)
+		}
+		// fmt.Printf("%-*s %s %s %s\n", wordSize, name, prevToken, currentToken, nextToken)
 	}
 	fmt.Printf("[%-29s]\n", strings.Repeat("=", progress))
 }
