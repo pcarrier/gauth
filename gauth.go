@@ -105,8 +105,8 @@ func main() {
 		mode := cipher.NewCBCDecrypter(block, iv)
 		mode.CryptBlocks(rest, rest)
 		// Remove padding
-		i := len(rest) - 1
-		for rest[i] < 16 {
+		i := len(rest)
+		for rest[i-1] < 16 {
 			i--
 		}
 		cfgContent = rest[:i]
