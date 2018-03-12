@@ -93,6 +93,24 @@ If your Android phone is rooted, it's easy to "back up" your secrets from an `ad
     # sqlite3 /data/data/com.google.android.apps.authenticator2/databases/database \
               'select email,secret from accounts'
 
+Docker
+------
+
+This application can be run with Docker.
+
+Compile with:
+
+```sh
+docker build -t <tag> .
+```
+
+And run with:
+```sh
+docker run -v $(realpath ~/.config/gauth.csv):/root/.config/gauth.csv <tag>
+```
+
+Replace `<tag>` with anything you want, e.g. gauth
+
 Really, does this make sense?
 -----------------------------
 
