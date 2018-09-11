@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"encoding/base32"
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"golang.org/x/crypto/ssh/terminal"
 	"io/ioutil"
@@ -74,8 +75,15 @@ func main() {
 	if e != nil {
 		log.Fatal(e)
 	}
-	cfgPath := path.Join(user.HomeDir, ".config/gauth.csv")
 
+	var configPtr string
+	flag.StringVar(&configPtr, "config", path.Join(user.HomeDir, ".config/gauth.csv"), "Absolute path to config file to use")
+	
+	flag.Parse()
+	sArgs := flag.Args()
+
+	cfgPath := path.Join("", configPtr)
+	
 	cfgContent, e := ioutil.ReadFile(cfgPath)
 	if e != nil {
 		log.Fatal(e)
@@ -125,14 +133,41 @@ func main() {
 	prevTS := currentTS - 1
 	nextTS := currentTS + 1
 
-	fmt.Println("           prev   curr   next")
+	wordSize := 0
+ 	for _, record := range cfg {
+		// Only include the ones that are provided in the search result
+		var actualSize int
+		if len(sArgs) == 0 {
+			actualSize = len([]rune(record[0]))
+		} else if strings.Contains(strings.ToLower(record[0]), strings.ToLower(sArgs[0])) == true {
+			actualSize = len([]rune(record[0]))
+		}
+
+ 		if actualSize > wordSize {
+ 			wordSize = actualSize
+		}
+ 	}
+
+ 	var header = "prev   curr   next"
+ 	fmt.Println(leftPad(header, " ", wordSize+1))
 	for _, record := range cfg {
 		name := record[0]
 		secret := normalizeSecret(record[1])
 		prevToken := authCodeOrDie(secret, prevTS)
 		currentToken := authCodeOrDie(secret, currentTS)
 		nextToken := authCodeOrDie(secret, nextTS)
-		fmt.Printf("%-10s %s %s %s\n", name, prevToken, currentToken, nextToken)
+
+		if len(sArgs) == 0 {
+			fmt.Printf("%-*s %s %s %s\n", wordSize, name, prevToken, currentToken, nextToken)
+		} else if strings.Contains(strings.ToLower(name), strings.ToLower(sArgs[0])) == true {
+			fmt.Printf("%-*s %s %s %s\n", wordSize, name, prevToken, currentToken, nextToken)
+		}
+		// fmt.Printf("%-*s %s %s %s\n", wordSize, name, prevToken, currentToken, nextToken)
 	}
 	fmt.Printf("[%-29s]\n", strings.Repeat("=", progress))
 }
+
+func leftPad(s string, padStr string, pLen int) string {
+	return strings.Repeat(padStr, pLen) + s
+}
+
