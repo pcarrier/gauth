@@ -10,7 +10,6 @@ import (
 	"encoding/base32"
 	"encoding/csv"
 	"fmt"
-	"golang.org/x/crypto/ssh/terminal"
 	"io/ioutil"
 	"log"
 	"math/big"
@@ -19,6 +18,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 func TimeStamp() (int64, int) {
@@ -84,7 +85,7 @@ func main() {
 	// Support for 'openssl enc -aes-128-cbc -md sha256 -pass pass:'
 	if bytes.Compare(cfgContent[:8], []byte{0x53, 0x61, 0x6c, 0x74, 0x65, 0x64, 0x5f, 0x5f}) == 0 {
 		fmt.Printf("Encryption password: ")
-		passwd, e := terminal.ReadPassword(syscall.Stdin)
+		passwd, e := terminal.ReadPassword(int(syscall.Stdin))
 		fmt.Printf("\n")
 		if e != nil {
 			log.Fatal(e)
