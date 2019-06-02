@@ -6,7 +6,7 @@ import (
 	"github.com/pcarrier/gauth/gauth"
 )
 
-func TestCode(t *testing.T) {
+func TestCodes(t *testing.T) {
 	tests := []struct {
 		secret string
 		index  int64
@@ -20,7 +20,7 @@ func TestCode(t *testing.T) {
 		{"blargh!", 123, "", true},
 	}
 	for _, test := range tests {
-		got, err := gauth.Code(test.secret, test.index)
+		_, got, _, err := gauth.Codes(test.secret, test.index)
 		if err != nil && !test.fail {
 			t.Errorf("Code(%q, %d): unexpected error: %v", test.secret, test.index, err)
 		} else if got != test.want {

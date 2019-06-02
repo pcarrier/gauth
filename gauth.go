@@ -73,40 +73,17 @@ func main() {
 	}
 
 	currentTS, progress := gauth.IndexNow()
-	prevTS := currentTS - 1
-	nextTS := currentTS + 1
 
 	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 1, ' ', 0)
 	fmt.Fprintln(tw, "\tprev\tcurr\tnext")
 	for _, record := range cfg {
-		name := record[0]
-		secret := normalizeSecret(record[1])
-		prevToken := authCodeOrDie(secret, prevTS)
-		currentToken := authCodeOrDie(secret, currentTS)
-		nextToken := authCodeOrDie(secret, nextTS)
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", name, prevToken, currentToken, nextToken)
+		name, secret := record[0], record[1]
+		prev, curr, next, err := gauth.Codes(secret, currentTS)
+		if err != nil {
+			log.Fatalf("Code: %v", err)
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", name, prev, curr, next)
 	}
 	tw.Flush()
 	fmt.Printf("[%-29s]\n", strings.Repeat("=", progress))
-}
-
-// normalizeSecret cleans up whitespace and adds any missing padding to sec to
-// use it as an OTP seed.
-func normalizeSecret(sec string) string {
-	noPadding := strings.ToUpper(strings.Replace(sec, " ", "", -1))
-	padLength := 8 - (len(noPadding) % 8)
-	if padLength < 8 {
-		return noPadding + strings.Repeat("=", padLength)
-	}
-	return noPadding
-}
-
-// authCodeOrDie returns a code for the specified parameters, or aborts if an
-// error occurred while generating the code.
-func authCodeOrDie(sec string, ts int64) string {
-	str, e := gauth.Code(sec, ts)
-	if e != nil {
-		log.Fatal(e)
-	}
-	return str
 }
