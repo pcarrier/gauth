@@ -9,10 +9,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"os/user"
 	"path"
 	"strings"
 	"syscall"
+	"text/tabwriter"
 
 	"github.com/pcarrier/gauth/gauth"
 	"golang.org/x/crypto/ssh/terminal"
@@ -74,29 +76,18 @@ func main() {
 	prevTS := currentTS - 1
 	nextTS := currentTS + 1
 
-	wordSize := 0
-	for _, record := range cfg {
-		actualSize := len([]rune(record[0]))
-		if actualSize > wordSize {
-			wordSize = actualSize
-		}
-	}
-
-	var header = "prev   curr   next"
-	fmt.Println(leftPad(header, " ", wordSize+1))
+	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 1, ' ', 0)
+	fmt.Fprintln(tw, "\tprev\tcurr\tnext")
 	for _, record := range cfg {
 		name := record[0]
 		secret := normalizeSecret(record[1])
 		prevToken := authCodeOrDie(secret, prevTS)
 		currentToken := authCodeOrDie(secret, currentTS)
 		nextToken := authCodeOrDie(secret, nextTS)
-		fmt.Printf("%-*s %s %s %s\n", wordSize, name, prevToken, currentToken, nextToken)
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", name, prevToken, currentToken, nextToken)
 	}
+	tw.Flush()
 	fmt.Printf("[%-29s]\n", strings.Repeat("=", progress))
-}
-
-func leftPad(s string, padStr string, pLen int) string {
-	return strings.Repeat(padStr, pLen) + s
 }
 
 // normalizeSecret cleans up whitespace and adds any missing padding to sec to
