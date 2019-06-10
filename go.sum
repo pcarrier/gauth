@@ -1,5 +1,5 @@
-bitbucket.org/creachadair/otp v0.0.2 h1:0IAI6yUiapmEHt/x6sdmv8BnPRVOyWT/mPxqYkcYbF8=
-bitbucket.org/creachadair/otp v0.0.2/go.mod h1:1RXxCIhHl/bxTZlSWONJzpCOi5uHZuwrDAkomlYrUGg=
+github.com/creachadair/otp v0.1.0 h1:JgsbBS3KYbZ7/HE4t5ylRIFRjtDrhzpUHwmpZc03INY=
+github.com/creachadair/otp v0.1.0/go.mod h1:vPuEqgSogZ1vtpF8OeUg28ke/PK2FIo85GZHJz74d0M=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20190530122614-20be4c3c3ed5 h1:8dUaAV7K4uHsF56JQWkprecIQKdPHtR9jCHF5nB8uzc=
 golang.org/x/crypto v0.0.0-20190530122614-20be4c3c3ed5/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
