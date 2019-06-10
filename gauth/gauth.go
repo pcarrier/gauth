@@ -5,7 +5,7 @@ package gauth
 import (
 	"time"
 
-	"bitbucket.org/creachadair/otp"
+	"github.com/creachadair/otp"
 )
 
 // IndexNow returns the current 30-second time slice index, and the number of
