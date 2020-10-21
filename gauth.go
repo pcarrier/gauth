@@ -28,7 +28,7 @@ func main() {
 
 	cfgContent, err := gauth.LoadConfigFile(cfgPath, getPassword)
 	if err != nil {
-		log.Fatalf("Error: %v", err)
+		log.Fatalf("Loading config: %v", err)
 	}
 
 	cfgReader := csv.NewReader(bytes.NewReader(cfgContent))
@@ -37,7 +37,7 @@ func main() {
 
 	cfg, err := cfgReader.ReadAll()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Decoding CSV: %v", err)
 	}
 
 	currentTS, progress := gauth.IndexNow()
@@ -48,7 +48,7 @@ func main() {
 		name, secret := record[0], record[1]
 		prev, curr, next, err := gauth.Codes(secret, currentTS)
 		if err != nil {
-			log.Fatalf("Code: %v", err)
+			log.Fatalf("Generating codes: %v", err)
 		}
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", name, prev, curr, next)
 	}
