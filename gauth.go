@@ -19,9 +19,9 @@ import (
 func main() {
 	cfgPath := os.Getenv("GAUTH_CONFIG")
 	if cfgPath == "" {
-		user, e := user.Current()
-		if e != nil {
-			log.Fatal(e)
+		user, err := user.Current()
+		if err != nil {
+			log.Fatal(err)
 		}
 		cfgPath = path.Join(user.HomeDir, ".config/gauth.csv")
 	}
@@ -35,9 +35,9 @@ func main() {
 	// Unix-style tabular
 	cfgReader.Comma = ':'
 
-	cfg, e := cfgReader.ReadAll()
-	if e != nil {
-		log.Fatal(e)
+	cfg, err := cfgReader.ReadAll()
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	currentTS, progress := gauth.IndexNow()
