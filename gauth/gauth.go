@@ -51,7 +51,7 @@ func LoadConfigFile(path string, getPass func() ([]byte, error)) ([]byte, error)
 	// Support for 'openssl enc -aes-128-cbc -md sha256 -pass pass:'
 	passwd, err := getPass()
 	if err != nil {
-		return nil, fmt.Errorf("reading passphrase: %w", err)
+		return nil, fmt.Errorf("reading passphrase: %v", err)
 	}
 
 	salt := data[8:16]
@@ -64,7 +64,7 @@ func LoadConfigFile(path string, getPass func() ([]byte, error)) ([]byte, error)
 	iv := sum[16:]
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, fmt.Errorf("creating cipher: %w", err)
+		return nil, fmt.Errorf("creating cipher: %v", err)
 	}
 
 	mode := cipher.NewCBCDecrypter(block, iv)
