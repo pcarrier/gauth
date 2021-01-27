@@ -18,7 +18,7 @@ Usage
 
         AWS:   ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567
         Airbnb:abcd efgh ijkl mnop
-        Google:a2b3c4d5e6f7g8h9
+        Google:a2b3c4d5e6f7ghij
         Github:234567qrstuvwxyz
 
 - Restrict access to your user:
