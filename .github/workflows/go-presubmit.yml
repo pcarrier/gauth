@@ -21,3 +21,5 @@ jobs:
         go-version: ${{ matrix.go-version }}
     - uses: actions/checkout@v2
     - uses: creachadair/go-presubmit-action@default
+      with:
+        staticcheck-version: "2020.1.6"
