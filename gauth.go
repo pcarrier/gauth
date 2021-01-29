@@ -3,11 +3,13 @@ package main
 import (
 	"bytes"
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"log"
 	"os"
 	"os/user"
 	"path"
+	"strconv"
 	"strings"
 	"syscall"
 	"text/tabwriter"
@@ -16,14 +18,20 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
+var (
+	useCSV = flag.Bool("csv", false, "Output CSV for easy machine processing")
+)
+
 func main() {
+	flag.Parse()
+
 	cfgPath := os.Getenv("GAUTH_CONFIG")
 	if cfgPath == "" {
-		user, err := user.Current()
+		usr, err := user.Current()
 		if err != nil {
 			log.Fatal(err)
 		}
-		cfgPath = path.Join(user.HomeDir, ".config/gauth.csv")
+		cfgPath = path.Join(usr.HomeDir, ".config/gauth.csv")
 	}
 
 	cfgContent, err := gauth.LoadConfigFile(cfgPath, getPassword)
@@ -42,22 +50,45 @@ func main() {
 
 	currentTS, progress := gauth.IndexNow()
 
-	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 1, ' ', 0)
-	fmt.Fprintln(tw, "\tprev\tcurr\tnext")
-	for _, record := range cfg {
-		name, secret := record[0], record[1]
-		prev, curr, next, err := gauth.Codes(secret, currentTS)
-		if err != nil {
-			log.Fatalf("Generating codes: %v", err)
+	if *useCSV {
+		cw := csv.NewWriter(os.Stdout)
+		for _, record := range cfg {
+			name, secret := record[0], record[1]
+			_, curr, next, err := gauth.Codes(secret, currentTS)
+			if err != nil {
+				log.Fatalf("Generating codes: %v", err)
+			}
+			if err := cw.Write([]string{name, curr, next, strconv.Itoa(30 - progress)}); err != nil {
+				log.Fatalf("Printing CSV: %v", err)
+			}
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", name, prev, curr, next)
+		cw.Flush()
+	} else {
+		tw := tabwriter.NewWriter(os.Stdout, 0, 8, 1, ' ', 0)
+		if _, err := fmt.Fprintln(tw, "\tprev\tcurr\tnext"); err != nil {
+			log.Fatalf("Printing header: %v", err)
+		}
+		for _, record := range cfg {
+			name, secret := record[0], record[1]
+			prev, curr, next, err := gauth.Codes(secret, currentTS)
+			if err != nil {
+				log.Fatalf("Generating codes: %v", err)
+			}
+			if _, err := fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", name, prev, curr, next); err != nil {
+				log.Fatalf("Printing %v: %v", name, err)
+			}
+		}
+		if err := tw.Flush(); err != nil {
+			log.Fatalf("Flushing: %v", err)
+		}
+		fmt.Printf("[%-29s]\n", strings.Repeat("=", progress))
 	}
-	tw.Flush()
-	fmt.Printf("[%-29s]\n", strings.Repeat("=", progress))
 }
 
 func getPassword() ([]byte, error) {
-	fmt.Printf("Encryption password: ")
+	if _, err := fmt.Printf("Encryption password: "); err != nil {
+		log.Fatalf("Printing encryption password prompt")
+	}
 	defer fmt.Println()
-	return terminal.ReadPassword(int(syscall.Stdin))
+	return terminal.ReadPassword(syscall.Stdin)
 }
