@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/pcarrier/gauth.png?branch=master)](https://travis-ci.org/pcarrier/gauth)
+[![Build Status](https://travis-ci.org/pcarrier/gauth.png?branch=main)](https://travis-ci.org/pcarrier/gauth)
 
 gauth: replace Google Authenticator
 ===================================
