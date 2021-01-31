@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/pcarrier/gauth.png?branch=main)](https://travis-ci.org/pcarrier/gauth)
+[![Go presubmit](https://github.com/pcarrier/gauth/workflows/Go%20presubmit/badge.svg)](https://github.com/pcarrier/gauth/actions)
 
 gauth: replace Google Authenticator
 ===================================
