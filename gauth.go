@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"encoding/csv"
 	"fmt"
 	"log"
 	"os"
@@ -31,26 +29,21 @@ func main() {
 		log.Fatalf("Loading config: %v", err)
 	}
 
-	cfgReader := csv.NewReader(bytes.NewReader(cfgContent))
-	// Unix-style tabular
-	cfgReader.Comma = ':'
-
-	cfg, err := cfgReader.ReadAll()
+	urls, err := gauth.ParseConfig(cfgContent)
 	if err != nil {
-		log.Fatalf("Decoding CSV: %v", err)
+		log.Fatalf("Decoding configuration file: %v", err)
 	}
 
-	currentTS, progress := gauth.IndexNow()
+	_, progress := gauth.IndexNow() // TODO: do this per-code
 
 	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 1, ' ', 0)
 	fmt.Fprintln(tw, "\tprev\tcurr\tnext")
-	for _, record := range cfg {
-		name, secret := record[0], record[1]
-		prev, curr, next, err := gauth.Codes(secret, currentTS)
+	for _, url := range urls {
+		prev, curr, next, err := gauth.Codes(url)
 		if err != nil {
-			log.Fatalf("Generating codes: %v", err)
+			log.Fatalf("Generating codes for %q: %v", url.Account, err)
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", name, prev, curr, next)
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", url.Account, prev, curr, next)
 	}
 	tw.Flush()
 	fmt.Printf("[%-29s]\n", strings.Repeat("=", progress))

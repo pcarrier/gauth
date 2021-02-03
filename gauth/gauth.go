@@ -10,9 +10,11 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"time"
 
 	"github.com/creachadair/otp"
+	"github.com/creachadair/otp/otpauth"
 )
 
 // IndexNow returns the current 30-second time slice index, and the number of
@@ -22,17 +24,27 @@ func IndexNow() (int64, int) {
 	return time / 30, int(time % 30)
 }
 
-// Codes returns the OTP codes for the given secret at the specified time slice
-// and one slice on either side of it. It will report an error if the secret is
-// not valid Base32.
-func Codes(sec string, ts int64) (prev, curr, next string, _ error) {
-	var cfg otp.Config
-	if err := cfg.ParseKey(sec); err != nil {
-		return "", "", "", err
+// Codes returns the previous, current, and next codes from u.
+func Codes(u *otpauth.URL) (prev, curr, next string, _ error) {
+	if u.Type != "totp" {
+		return "", "", "", fmt.Errorf("unsupported type: %q", u.Type)
+	} else if u.Algorithm != "" && u.Algorithm != "SHA1" {
+		return "", "", "", fmt.Errorf("unsupported algorithm: %q", u.Algorithm)
 	}
-	prev = cfg.HOTP(uint64(ts - 1))
-	curr = cfg.HOTP(uint64(ts))
-	next = cfg.HOTP(uint64(ts + 1))
+
+	cfg := otp.Config{Digits: u.Digits}
+	var ts uint64
+	if u.Period > 0 {
+		ts = otp.TimeWindow(u.Period)()
+	} else {
+		ts = otp.TimeWindow(30)()
+	}
+	if err := cfg.ParseKey(u.RawSecret); err != nil {
+		return "", "", "", fmt.Errorf("invalid secret: %v", err)
+	}
+	prev = cfg.HOTP(ts - 1)
+	curr = cfg.HOTP(ts)
+	next = cfg.HOTP(ts + 1)
 	return
 }
 
@@ -81,4 +93,51 @@ func LoadConfigFile(path string, getPass func() ([]byte, error)) ([]byte, error)
 		}
 	}
 	return rest[:len(rest)-int(pad)], nil
+}
+
+// ParseConfig parses the contents of data as a gauth configuration file.  Each
+// line of the file specifies a single configuration.
+//
+// The basic configuration format is:
+//
+//    name:secret
+//
+// where "name" is the site name and "secret" is the base32-encoded secret.
+// This represents a default Google authenticator code with 6 digits and a
+// 30-second refresh.
+//
+// Otherwise, a line must be a URL in the format:
+//
+//    otpauth://TYPE/LABEL?PARAMETERS
+//
+func ParseConfig(data []byte) ([]*otpauth.URL, error) {
+	var out []*otpauth.URL
+	for ln, line := range strings.Split(string(data), "\n") {
+		trim := strings.TrimSpace(line)
+		if trim == "" {
+			continue // skip blank lines
+		}
+
+		// URL format.
+		if strings.HasPrefix(trim, "otpauth://") {
+			u, err := otpauth.ParseURL(trim)
+			if err != nil {
+				return nil, fmt.Errorf("line %d: invalid otpauth URL: %v", ln+1, err)
+			}
+			out = append(out, u)
+			continue
+		}
+
+		// Legacy format (name:secret)
+		parts := strings.SplitN(trim, ":", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("line %d: invalid format (want name:secret)", ln+1)
+		}
+		out = append(out, &otpauth.URL{
+			Type:      "totp",
+			Account:   strings.TrimSpace(parts[0]),
+			RawSecret: strings.TrimSpace(parts[1]),
+		})
+	}
+	return out, nil
 }
