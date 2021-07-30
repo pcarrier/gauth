@@ -46,7 +46,7 @@ Encryption
 
 `gauth` supports password-based encryption of `gauth.csv`. To encrypt, use:
 
-        $ openssl enc -aes-128-cbc -md sha256 -in gauth.csv -out ~/.config/gauth.csv
+        $ openssl enc -aes-128-cbc -md sha256 -in ~/gauth.csv -out ~/.config/gauth.csv
         enter aes-128-cbc encryption password:
         Verifying - enter aes-128-cbc encryption password:
 
