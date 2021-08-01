@@ -27,11 +27,11 @@ func main() {
 
 	cfgPath := os.Getenv("GAUTH_CONFIG")
 	if cfgPath == "" {
-		usr, err := user.Current()
+		u, err := user.Current()
 		if err != nil {
 			log.Fatal(err)
 		}
-		cfgPath = path.Join(usr.HomeDir, ".config/gauth.csv")
+		cfgPath = path.Join(u.HomeDir, ".config/gauth.csv")
 	}
 
 	cfgContent, err := gauth.LoadConfigFile(cfgPath, getPassword)
@@ -54,15 +54,19 @@ func main() {
 		cw := csv.NewWriter(os.Stdout)
 		for _, record := range cfg {
 			name, secret := record[0], record[1]
-			_, curr, next, err := gauth.Codes(secret, currentTS)
+			prev, curr, next, err := gauth.Codes(secret, currentTS)
 			if err != nil {
 				log.Fatalf("Generating codes: %v", err)
 			}
-			if err := cw.Write([]string{name, curr, next, strconv.Itoa(30 - progress)}); err != nil {
+			if err := cw.Write([]string{name, curr, next, prev, strconv.Itoa(30 - progress)}); err != nil {
 				log.Fatalf("Printing CSV: %v", err)
 			}
 		}
 		cw.Flush()
+		err := cw.Error()
+		if err != nil {
+			log.Fatalf("Flushing: %v", err)
+		}
 	} else {
 		tw := tabwriter.NewWriter(os.Stdout, 0, 8, 1, ' ', 0)
 		if _, err := fmt.Fprintln(tw, "\tprev\tcurr\tnext"); err != nil {
