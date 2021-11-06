@@ -17,15 +17,27 @@ import (
 	"github.com/creachadair/otp/otpauth"
 )
 
-// IndexNow returns the current 30-second time slice index, and the number of
-// seconds remaining until it ends.
-func IndexNow() (int64, int) {
+// IndexNow returns the current 30-second time step, and the number of seconds
+// remaining until it ends.
+func IndexNow() (uint64, int) {
 	time := time.Now().Unix()
-	return time / 30, int(time % 30)
+	return uint64(time / 30), int(time % 30)
 }
 
 // Codes returns the previous, current, and next codes from u.
 func Codes(u *otpauth.URL) (prev, curr, next string, _ error) {
+	var ts uint64
+	if u.Period > 0 {
+		ts = otp.TimeWindow(u.Period)()
+	} else {
+		ts, _ = IndexNow()
+	}
+	return CodesAtTimeStep(u, ts)
+}
+
+// CodesAtTimeStep returns the previous, current, and next codes from u at the
+// given time step value.
+func CodesAtTimeStep(u *otpauth.URL, timeStep uint64) (prev, curr, next string, _ error) {
 	if u.Type != "totp" {
 		return "", "", "", fmt.Errorf("unsupported type: %q", u.Type)
 	} else if u.Algorithm != "" && u.Algorithm != "SHA1" {
@@ -33,18 +45,12 @@ func Codes(u *otpauth.URL) (prev, curr, next string, _ error) {
 	}
 
 	cfg := otp.Config{Digits: u.Digits}
-	var ts uint64
-	if u.Period > 0 {
-		ts = otp.TimeWindow(u.Period)()
-	} else {
-		ts = otp.TimeWindow(30)()
-	}
 	if err := cfg.ParseKey(u.RawSecret); err != nil {
 		return "", "", "", fmt.Errorf("invalid secret: %v", err)
 	}
-	prev = cfg.HOTP(ts - 1)
-	curr = cfg.HOTP(ts)
-	next = cfg.HOTP(ts + 1)
+	prev = cfg.HOTP(timeStep - 1)
+	curr = cfg.HOTP(timeStep)
+	next = cfg.HOTP(timeStep + 1)
 	return
 }
 

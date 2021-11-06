@@ -4,14 +4,14 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/creachadair/otp/otpauth"
 	"github.com/pcarrier/gauth/gauth"
 )
 
-/* TODO: Update this test.
 func TestCodes(t *testing.T) {
 	tests := []struct {
 		secret string
-		index  int64
+		index  uint64
 		want   string
 		fail   bool
 	}{
@@ -22,14 +22,15 @@ func TestCodes(t *testing.T) {
 		{"blargh!", 123, "", true},
 	}
 	for _, test := range tests {
-		_, got, _, err := gauth.Codes(test.secret, test.index)
+		u := &otpauth.URL{Type: "totp", RawSecret: test.secret}
+		_, got, _, err := gauth.CodesAtTimeStep(u, test.index)
 		if err != nil && !test.fail {
-			t.Errorf("Code(%q, %d): unexpected error: %v", test.secret, test.index, err)
+			t.Errorf("Codes(%q) at %d: unexpected error: %v", u, test.index, err)
 		} else if got != test.want {
-			t.Errorf("Code(%q, %d): got %q, want %q", test.secret, test.index, got, test.want)
+			t.Errorf("Codes(%q) at %d: got %q, want %q", u, test.index, got, test.want)
 		}
 	}
-} */
+}
 
 //go:generate openssl enc -aes-128-cbc -md sha256 -pass pass:x -in testdata/plaintext.csv -out testdata/encrypted.csv
 
