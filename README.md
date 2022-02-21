@@ -20,6 +20,7 @@ Usage
         Airbnb:abcd efgh ijkl mnop
         Google:a2b3c4d5e6f7ghij
         Github:234567qrstuvwxyz
+        otpauth://totp/testOrg:testuser?secret=AAAQEAYEAUDAOCAJ======&issuer=testOrg&algorithm=SHA512&digits=8&period=30
 
 - Restrict access to your user:
 
@@ -53,7 +54,7 @@ Encryption
 `gauth` will then prompt you for that password on every run:
 
         $ gauth
-        Encryption password: 
+        Encryption password:
                    prev   curr   next
         LastPass   915200 479333 408710
 
