@@ -6,9 +6,12 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/sha1"
 	"crypto/sha256"
+	"crypto/sha512"
 	"errors"
 	"fmt"
+	"hash"
 	"io/ioutil"
 	"strings"
 	"time"
@@ -22,6 +25,21 @@ import (
 func IndexNow() (uint64, int) {
 	time := time.Now().Unix()
 	return uint64(time / 30), int(time % 30)
+}
+
+// pickAlgorithm returns a constructor for the named hash function, or
+// an error if the name is not a supported algorithm.
+func pickAlgorithm(name string) (func() hash.Hash, error) {
+	switch name {
+	case "", "SHA1":
+		return sha1.New, nil
+	case "SHA256":
+		return sha256.New, nil
+	case "SHA512":
+		return sha512.New, nil
+	default:
+		return nil, fmt.Errorf("unsupported algorithm: %q", name)
+	}
 }
 
 // Codes returns the previous, current, and next codes from u.
@@ -40,11 +58,14 @@ func Codes(u *otpauth.URL) (prev, curr, next string, _ error) {
 func CodesAtTimeStep(u *otpauth.URL, timeStep uint64) (prev, curr, next string, _ error) {
 	if u.Type != "totp" {
 		return "", "", "", fmt.Errorf("unsupported type: %q", u.Type)
-	} else if u.Algorithm != "" && u.Algorithm != "SHA1" {
-		return "", "", "", fmt.Errorf("unsupported algorithm: %q", u.Algorithm)
 	}
 
-	cfg := otp.Config{Digits: u.Digits}
+	alg, err := pickAlgorithm(u.Algorithm)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	cfg := otp.Config{Hash: alg, Digits: u.Digits}
 	if err := cfg.ParseKey(u.RawSecret); err != nil {
 		return "", "", "", fmt.Errorf("invalid secret: %v", err)
 	}
