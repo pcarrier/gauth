@@ -84,7 +84,7 @@ Tested with:
 - bittrex.com
 - poloniex.com
 
-Please report further results to pierre@gcarrier.fr.
+Please report further results to pc@rrier.ca.
 
 Rooted Android?
 ---------------
