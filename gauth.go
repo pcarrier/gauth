@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 	"os/user"
-	"path"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"text/tabwriter"
@@ -21,7 +21,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		cfgPath = path.Join(user.HomeDir, ".config/gauth.csv")
+		cfgPath = filepath.Join(user.HomeDir, ".config", "gauth.csv")
 	}
 
 	cfgContent, err := gauth.LoadConfigFile(cfgPath, getPassword)
