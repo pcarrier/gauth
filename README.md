@@ -6,9 +6,9 @@ gauth: replace Google Authenticator
 Installation
 ------------
 
-With a Go environment already set up, it should be as easy as `go get github.com/pcarrier/gauth`.
+With a Go environment already set up, it should be as easy as `go install github.com/pcarrier/gauth@latest`.
 
-*Eg,* with `GOPATH=$HOME/go`, it will create a binary `$HOME/go/bin/gauth`.
+*Eg,* with `GOPATH=$HOME/go` (its default), it will create a binary `$HOME/go/bin/gauth`.
 
 Usage
 -----
