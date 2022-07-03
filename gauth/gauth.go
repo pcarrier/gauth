@@ -23,8 +23,8 @@ import (
 // IndexNow returns the current 30-second time step, and the number of seconds
 // remaining until it ends.
 func IndexNow() (uint64, int) {
-	time := time.Now().Unix()
-	return uint64(time / 30), int(time % 30)
+	t := time.Now().Unix()
+	return uint64(t / 30), int(t % 30)
 }
 
 // pickAlgorithm returns a constructor for the named hash function, or
@@ -96,7 +96,7 @@ func LoadConfigFile(path string, getPass func() ([]byte, error)) ([]byte, error)
 	salt := data[8:16]
 	rest := data[16:]
 	salting := sha256.New()
-	salting.Write([]byte(passwd))
+	salting.Write(passwd)
 	salting.Write(salt)
 	sum := salting.Sum(nil)
 	key := sum[:16]
@@ -119,7 +119,7 @@ func LoadConfigFile(path string, getPass func() ([]byte, error)) ([]byte, error)
 			return nil, errors.New("invalid block padding")
 		}
 	}
-	return rest[:len(rest)-int(pad)], nil
+	return rest[:len(rest)-pad], nil
 }
 
 // ParseConfig parses the contents of data as a gauth configuration file.  Each
@@ -155,7 +155,7 @@ func ParseConfig(data []byte) ([]*otpauth.URL, error) {
 			continue
 		}
 
-		// Legacy format (name:secret)
+		// Simple format (name:secret)
 		parts := strings.SplitN(trim, ":", 2)
 		if len(parts) != 2 {
 			return nil, fmt.Errorf("line %d: invalid format (want name:secret)", ln+1)
