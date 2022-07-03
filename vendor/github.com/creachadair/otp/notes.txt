@@ -1,0 +1,2 @@
+Standard alphabet:   "0123456789"
+SteamGuard alphabet: "23456789BCDFGHJKMNPQRTVWXY"
