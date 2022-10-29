@@ -7,8 +7,7 @@
 //
 // The general form of an OTP URL is:
 //
-//    otpauth://TYPE/LABEL?PARAMETERS
-//
+//	otpauth://TYPE/LABEL?PARAMETERS
 package otpauth
 
 import (
