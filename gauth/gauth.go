@@ -127,7 +127,7 @@ func LoadConfigFile(path string, getPass func() ([]byte, error)) ([]byte, error)
 //
 // The basic configuration format is:
 //
-//    name:secret
+//	name:secret
 //
 // where "name" is the site name and "secret" is the base32-encoded secret.
 // This represents a default Google authenticator code with 6 digits and a
@@ -135,8 +135,7 @@ func LoadConfigFile(path string, getPass func() ([]byte, error)) ([]byte, error)
 //
 // Otherwise, a line must be a URL in the format:
 //
-//    otpauth://TYPE/LABEL?PARAMETERS
-//
+//	otpauth://TYPE/LABEL?PARAMETERS
 func ParseConfig(data []byte) ([]*otpauth.URL, error) {
 	var out []*otpauth.URL
 	for ln, line := range strings.Split(string(data), "\n") {

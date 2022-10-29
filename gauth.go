@@ -11,7 +11,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/pcarrier/gauth/gauth"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 func main() {
@@ -52,5 +52,5 @@ func main() {
 func getPassword() ([]byte, error) {
 	fmt.Printf("Encryption password: ")
 	defer fmt.Println()
-	return terminal.ReadPassword(int(syscall.Stdin))
+	return term.ReadPassword(int(syscall.Stdin))
 }

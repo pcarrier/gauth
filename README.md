@@ -1,4 +1,4 @@
-[![Go presubmit](https://github.com/pcarrier/gauth/workflows/Go%20presubmit/badge.svg)](https://github.com/pcarrier/gauth/actions)
+[![Go presubmit](https://github.com/pcarrier/gauth/actions/workflows/go-presubmit.yml/badge.svg)](https://github.com/pcarrier/gauth/actions)
 
 gauth: replace Google Authenticator
 ===================================

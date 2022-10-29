@@ -59,12 +59,12 @@ type Config struct {
 	Counter  uint64           // HOTP counter value
 	Digits   int              // number of OTP digits (default 6)
 
-	// If set, this function is called with the truncated counter hash to format
-	// a code of the specified width. By default, the code is formatted as
-	// decimal digits (0..9).
+	// If set, this function is called with the counter hash to format a code of
+	// the specified length. By default, the code is truncated per RFC 4226 and
+	// formatted as decimal digits (0..9).
 	//
 	// If Format returns a string of the wrong length, code generation panics.
-	Format func(v uint64, width int) string
+	Format func(hash []byte, length int) string
 }
 
 // ParseKey parses a base32 key using the top-level ParseKey function, and
@@ -92,7 +92,7 @@ func ParseKey(s string) ([]byte, error) {
 // HOTP returns the HOTP code for the specified counter value.
 func (c Config) HOTP(counter uint64) string {
 	nd := c.digits()
-	code := c.format(truncate(c.hmac(counter)), nd)
+	code := c.format(c.hmac(counter), nd)
 	if len(code) != nd {
 		panic(fmt.Sprintf("invalid code length: got %d, want %d", len(code), nd))
 	}
@@ -137,14 +137,16 @@ func (c Config) hmac(counter uint64) []byte {
 	return h.Sum(nil)
 }
 
-func (c Config) format(v uint64, nd int) string {
+func (c Config) format(v []byte, nd int) string {
 	if c.Format != nil {
 		return c.Format(v, nd)
 	}
-	return format(v, nd)
+	return formatDecimal(v, nd)
 }
 
-func truncate(digest []byte) uint64 {
+// Truncate truncates the specified digest using the algorithm from RFC 4226.
+// Only the low-order 31 bits of the value are populated; the rest are zero.
+func Truncate(digest []byte) uint64 {
 	offset := digest[len(digest)-1] & 0x0f
 	code := (uint64(digest[offset]&0x7f) << 24) |
 		(uint64(digest[offset+1]) << 16) |
@@ -153,24 +155,25 @@ func truncate(digest []byte) uint64 {
 	return code
 }
 
-func format(code uint64, width int) string {
+func formatDecimal(hash []byte, width int) string {
 	const padding = "00000000000000000000"
 
-	s := strconv.FormatUint(code, 10)
+	s := strconv.FormatUint(Truncate(hash), 10)
 	if len(s) < width {
 		s = padding[:width-len(s)] + s // left-pad with zeros
 	}
 	return s[len(s)-width:]
 }
 
-// FormatAlphabet constructs a formatting function that maps code digits to the
-// coresponding letters of the given alphabet string.  Code digits are expanded
-// from most to least significant.
-func FormatAlphabet(alphabet string) func(uint64, int) string {
+// FormatAlphabet constructs a formatting function that truncates the counter
+// hash per RFC 4226 and assigns code digits using the letters of the given
+// alphabet string.  Code digits are expanded from most to least significant.
+func FormatAlphabet(alphabet string) func([]byte, int) string {
 	if alphabet == "" {
 		panic("empty formatting alphabet")
 	}
-	return func(code uint64, width int) string {
+	return func(hmac []byte, width int) string {
+		code := Truncate(hmac)
 		w := uint64(len(alphabet))
 		out := make([]byte, width)
 		for i := width - 1; i >= 0; i-- {
