@@ -44,7 +44,7 @@ Usage
 
 - If you find yourself needing to interpret a QR code (e.g. exporting a code
   from an existing Google Authenticator setup, on a phone to which you do not
-  have root access), then [https://github.com/jbert/gauthQR](gauthQR) may be useful.
+  have root access), then [gauthQR](https://github.com/jbert/gauthQR) may be useful.
 
 Encryption
 ----------
