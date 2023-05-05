@@ -42,6 +42,10 @@ Usage
 
 - Remember to keep your system clock synchronized and to **lock your computer when brewing your tea!**
 
+- If you find yourself needing to interpret a QR code (e.g. exporting a code
+  from an existing Google Authenticator setup, on a phone to which you do not
+  have root access), then [https://github.com/jbert/gauthQR](gauthQR) may be useful.
+
 Encryption
 ----------
 
@@ -93,6 +97,9 @@ If your Android phone is rooted, it's easy to "back up" your secrets from an `ad
 
     # sqlite3 /data/data/com.google.android.apps.authenticator2/databases/database \
               'select email,secret from accounts'
+
+If your phone isn't rooted, you may have luck with the gauthQR tool mentioned
+in the Usage section above.
 
 Really, does this make sense?
 -----------------------------
