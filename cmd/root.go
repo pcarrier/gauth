@@ -19,7 +19,7 @@ import (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "gauth",
-	Short: "CLI-Application is for getting OTP codes",
+	Short: "OTP codes from the commang line",
 	Run: func(cmd *cobra.Command, args []string) {
 		var accountName string
 		if len(args) > 0 {
