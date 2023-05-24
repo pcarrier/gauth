@@ -73,7 +73,7 @@ func printBareCode(accountName string, urls []*otpauth.URL) {
 			if err != nil {
 				log.Fatalf("Generating codes for %q: %v", url.Account, err)
 			}
-			fmt.Println(curr)
+			fmt.Print(curr)
 			break
 		}
 	}
