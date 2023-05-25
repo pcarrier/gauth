@@ -36,6 +36,13 @@ Usage
         Github     911264 548790 784099
         [=======                      ]
 
+- Run `gauth KEYNAME` to print a specific key with progress bar.
+
+- Run `gauth KEYNAME -b` to print a bare current key.
+
+        $ gauth Google -b
+        477615
+
 - `gauth` is convenient to use in `watch`.
 
         $ watch -n1 gauth
