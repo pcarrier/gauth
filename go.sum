@@ -1,3 +1,5 @@
+github.com/atotto/clipboard v0.1.4 h1:EH0zSVneZPSuFR11BlR9YppQTVDbh5+16AmcJi4g1z4=
+github.com/atotto/clipboard v0.1.4/go.mod h1:ZY9tmq7sm5xIbd9bOK4onWV4S6X0u6GY7Vn0Yu86PYI=
 github.com/creachadair/otp v0.4.0 h1:3PBnESxegU3hQ0D447D75lSnTtTVfw6Eny8GviOXcqM=
 github.com/creachadair/otp v0.4.0/go.mod h1:mDkCUSoWN8zqxFoDMw20Boe6xeDd1jJuy6pNQQ4lCy4=
 golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=

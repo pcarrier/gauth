@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/atotto/clipboard"
 	"log"
 	"os"
 	"os/user"
@@ -73,7 +74,13 @@ func printBareCode(accountName string, urls []*otpauth.URL) {
 			if err != nil {
 				log.Fatalf("Generating codes for %q: %v", url.Account, err)
 			}
-			fmt.Print(curr)
+
+			err = clipboard.WriteAll(curr)
+			if err != nil {
+				fmt.Println("copy to clipboard error" + err.Error())
+			}
+			fmt.Println(curr)
+			fmt.Println("Token has copied to clipboard!")
 			break
 		}
 	}
