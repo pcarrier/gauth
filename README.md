@@ -43,6 +43,11 @@ Usage
         $ gauth Google -b
         477615
 
+- Run `gauth KEYNAME -s` to retrieve an accounts secret from the config.
+
+        $ gauth Google -s
+        your_secret_for_google
+
 - `gauth` is convenient to use in `watch`.
 
         $ watch -n1 gauth
@@ -52,6 +57,22 @@ Usage
 - If you find yourself needing to interpret a QR code (e.g. exporting a code
   from an existing Google Authenticator setup, on a phone to which you do not
   have root access), then [gauthQR](https://github.com/jbert/gauthQR) may be useful.
+
+
+Adding and removing keys
+------------------------
+
+- Run `gauth KEYNAME -a` to add a new key.
+
+        $ gauth Google -a
+        Key for Google: examplekey
+        Current OTP for Google: 306726
+
+- Run `gauth KEYNAME -r` to remove an existing key.
+
+        $ gauth Google -r
+        Are you sure you want to remove Google [y/N]: y
+        Google has been removed.
 
 Encryption
 ----------
