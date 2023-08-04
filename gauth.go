@@ -140,6 +140,72 @@ func addCode(accountName string) {
 		log.Fatalf("Error writing new config: %v", err)
 	}
 }
+
+func removeCode(accountName string) {
+	cfgPath := getConfigPath()
+
+	// Check for encryption and ask for password if necessary
+	_, isEncrypted, err := gauth.ReadConfigFile(cfgPath)
+
+	password, err := []byte(nil), nil
+
+	if isEncrypted {
+		password, err = getPassword()
+
+		if err != nil {
+			log.Fatalf("reading passphrase: %v", err)
+		}
+	}
+
+	// Get decoded config
+	rawConfig, err := gauth.LoadConfigFile(cfgPath, func() ([]byte, error) { return password, err })
+	if err != nil {
+		log.Fatalf("Loading config: %v", err)
+	}
+
+	newConfig := ""
+	anythingRemoved := false
+
+	// Iterate over config lines and search for the one to be removed
+	for _, line := range strings.Split(string(rawConfig), "\n") {
+		trim := strings.TrimSpace(line)
+		if trim == "" {
+			continue
+		}
+
+		if strings.HasPrefix(strings.ToLower(trim), strings.ToLower(accountName)) {
+			anythingRemoved = true
+			continue
+		}
+
+		newConfig += trim + "\n"
+
+	}
+
+	if !anythingRemoved {
+		fmt.Printf("Account \"%s\" was not found. Nothing has been removed.", accountName)
+		return
+	}
+
+	// Prompt for confirmation
+	fmt.Printf("Are you sure you want to remove \"%s\" [y/N]: ", accountName)
+	reader := bufio.NewReader(os.Stdin)
+	confirmation, _ := reader.ReadString('\n')
+
+	confirmation = strings.TrimSpace(confirmation)
+
+	if strings.ToLower(confirmation) != "y" {
+		return
+	}
+
+	// Write the new config
+	err = gauth.WriteConfigFile(cfgPath, password, []byte(newConfig))
+	if err != nil {
+		log.Fatalf("Error writing new config: %v", err)
+	}
+
+	fmt.Printf("%s has been removed.", accountName)
+}
 func printAllCodes(urls []*otpauth.URL) {
 	_, progress := gauth.IndexNow() // TODO: do this per-code
 
