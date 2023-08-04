@@ -138,6 +138,61 @@ func LoadConfigFile(path string, getPass func() ([]byte, error)) ([]byte, error)
 	return rest[:len(rest)-pad], nil
 }
 
+// WriteConfigFile encrypts the provided newConfig using passwd, if necessary,
+// and writes it to path
+func WriteConfigFile(path string, passwd []byte, newConfig []byte) error {
+	data, isEncrypted, err := ReadConfigFile(path)
+
+	if err != nil {
+		return err
+	}
+
+	if isEncrypted {
+		// Encrypt newConfig using the same salt as in the old config
+		salt := data[8:16]
+		salting := sha256.New()
+		salting.Write(passwd)
+		salting.Write(salt)
+		sum := salting.Sum(nil)
+		key := sum[:16]
+		iv := sum[16:]
+
+		block, err := aes.NewCipher(key)
+
+		if err != nil {
+			return fmt.Errorf("creating cipher: %v", err)
+		}
+
+		mode := cipher.NewCBCEncrypter(block, iv)
+
+		// Add needed CBC block padding
+		padLength := 16 - (len(newConfig) % 16)
+		pad := make([]byte, padLength)
+
+		for i := range pad {
+			pad[i] = byte(padLength)
+		}
+
+		newConfig = append(newConfig, pad...)
+
+		// Encrypt and construct the new data to be written
+		mode.CryptBlocks(newConfig, newConfig)
+
+		saltedPrefix := []byte("Salted__")
+		saltedPrefix = append(saltedPrefix, salt...)
+
+		newConfig = append(saltedPrefix, newConfig...)
+	}
+
+	err = ioutil.WriteFile(path, newConfig, 0)
+
+	if err != nil {
+		return fmt.Errorf("writing config: %v", err)
+	}
+
+	return err
+}
+
 // ParseConfig parses the contents of data as a gauth configuration file.  Each
 // line of the file specifies a single configuration.
 //
