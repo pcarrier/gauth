@@ -207,6 +207,16 @@ func removeCode(accountName string) {
 
 	fmt.Printf("%s has been removed.", accountName)
 }
+
+func printSecret(accountName string, urls []*otpauth.URL) {
+	for _, url := range urls {
+		if strings.EqualFold(strings.ToLower(accountName), strings.ToLower(url.Account)) {
+			fmt.Print(url.RawSecret)
+			break
+		}
+	}
+}
+
 func printAllCodes(urls []*otpauth.URL) {
 	_, progress := gauth.IndexNow() // TODO: do this per-code
 
