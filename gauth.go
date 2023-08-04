@@ -18,24 +18,45 @@ import (
 
 func main() {
 	accountName := ""
-	isBareCode := false
+	argument := ""
 
 	if len(os.Args) > 1 {
 		accountName = os.Args[1]
 	}
+
 	if len(os.Args) > 2 {
 		if os.Args[2] == "-b" || os.Args[2] == "-bare" {
-			isBareCode = true
+			argument = "bare"
+		} else if os.Args[2] == "-a" || os.Args[2] == "-add" {
+			argument = "add"
+		} else if os.Args[2] == "-r" || os.Args[2] == "-remove" {
+			argument = "remove"
+		} else if os.Args[2] == "-s" || os.Args[2] == "-secret" {
+			argument = "secret"
 		}
 	}
 
-	urls := getUrls()
-
-	if isBareCode && accountName != "" {
-		printBareCode(accountName, urls)
-	} else {
-		printAllCodes(urls)
+	if accountName != "" {
+		switch argument {
+		case "bare":
+			printBareCode(accountName, getUrls())
+			return
+		case "add":
+			addCode(accountName)
+			return
+		case "remove":
+			removeCode(accountName)
+			return
+		case "secret":
+			printSecret(accountName, getUrls())
+			return
+		default:
+			printAllCodes(getUrls())
+			return
+		}
 	}
+
+	printAllCodes(getUrls())
 }
 
 func getPassword() ([]byte, error) {
