@@ -75,15 +75,31 @@ func CodesAtTimeStep(u *otpauth.URL, timeStep uint64) (prev, curr, next string, 
 	return
 }
 
+// ReadConfigFile reads the config file at path and returns its contents and
+// whether it is encrypted or not
+func ReadConfigFile(path string) ([]byte, bool, error) {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if bytes.HasPrefix(data, []byte("Salted__")) {
+		return data, true, nil // encrypted
+	}
+
+	return data, false, nil
+}
+
 // LoadConfigFile reads and decrypts, if necessary, the CSV config at path.
 // The getPass function is called to obtain a password if needed.
 func LoadConfigFile(path string, getPass func() ([]byte, error)) ([]byte, error) {
-	data, err := ioutil.ReadFile(path)
+	data, isEncrypted, err := ReadConfigFile(path)
+
 	if err != nil {
 		return nil, err
 	}
 
-	if !bytes.HasPrefix(data, []byte("Salted__")) {
+	if !isEncrypted {
 		return data, nil // not encrypted
 	}
 
