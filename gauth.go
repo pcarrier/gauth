@@ -210,7 +210,7 @@ func removeCode(accountName string) {
 	}
 
 	// Prompt for confirmation
-	fmt.Printf("Are you sure you want to remove \"%s\" [y/N]: ", accountName)
+	fmt.Printf("Are you sure you want to remove %s [y/N]: ", accountName)
 	reader := bufio.NewReader(os.Stdin)
 	confirmation, _ := reader.ReadString('\n')
 
