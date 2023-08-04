@@ -43,7 +43,7 @@ func getPassword() ([]byte, error) {
 	return term.ReadPassword(int(syscall.Stdin))
 }
 
-func getUrls() []*otpauth.URL {
+func getConfigPath() string {
 	cfgPath := os.Getenv("GAUTH_CONFIG")
 	if cfgPath == "" {
 		user, err := user.Current()
@@ -52,6 +52,12 @@ func getUrls() []*otpauth.URL {
 		}
 		cfgPath = filepath.Join(user.HomeDir, ".config", "gauth.csv")
 	}
+
+	return cfgPath
+}
+
+func getUrls() []*otpauth.URL {
+	cfgPath := getConfigPath()
 
 	cfgContent, err := gauth.LoadConfigFile(cfgPath, getPassword)
 	if err != nil {
