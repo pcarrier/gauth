@@ -85,6 +85,61 @@ func printBareCode(accountName string, urls []*otpauth.URL) {
 	}
 }
 
+func addCode(accountName string) {
+	cfgPath := getConfigPath()
+
+	// Check for encryption and ask for password if necessary
+	_, isEncrypted, err := gauth.ReadConfigFile(cfgPath)
+
+	password, err := []byte(nil), nil
+
+	if isEncrypted {
+		password, err = getPassword()
+
+		if err != nil {
+			log.Fatalf("reading passphrase: %v", err)
+		}
+	}
+
+	// Get decoded config
+	rawConfig, err := gauth.LoadConfigFile(cfgPath, func() ([]byte, error) { return password, err })
+	if err != nil {
+		log.Fatalf("Loading config: %v", err)
+	}
+
+	newConfig := strings.TrimSuffix(string(rawConfig), "\n")
+
+	// Check if account already exists
+	for _, line := range strings.Split(newConfig, "\n") {
+		if strings.HasPrefix(strings.ToLower(line), strings.ToLower(accountName)) {
+			fmt.Printf("Account \"%s\" already exists. Nothing has been added.", accountName)
+			return
+		}
+	}
+
+	// Read new key
+	fmt.Printf("Key for %s: ", accountName)
+	reader := bufio.NewReader(os.Stdin)
+	key, _ := reader.ReadString('\n')
+
+	// Append new key
+	newConfig += "\n" + accountName + ":" + key + "\n"
+
+	// Try parsing the new config and print the current OTP
+	parsedConfig, err := gauth.ParseConfig([]byte(newConfig))
+	if err != nil {
+		log.Fatalf("Parsing new config: %v", err)
+	}
+
+	fmt.Printf("Current OTP for %s: ", accountName)
+	printBareCode(accountName, parsedConfig)
+
+	// write new config
+	err = gauth.WriteConfigFile(cfgPath, password, []byte(newConfig))
+	if err != nil {
+		log.Fatalf("Error writing new config: %v", err)
+	}
+}
 func printAllCodes(urls []*otpauth.URL) {
 	_, progress := gauth.IndexNow() // TODO: do this per-code
 
