@@ -113,6 +113,10 @@ func addCode(accountName string) {
 	// Check for encryption and ask for password if necessary
 	_, isEncrypted, err := gauth.ReadConfigFile(cfgPath)
 
+	if err != nil {
+		log.Fatalf("Reading config: %v", err)
+	}
+
 	password, err := []byte(nil), nil
 
 	if isEncrypted {
@@ -169,13 +173,17 @@ func removeCode(accountName string) {
 	// Check for encryption and ask for password if necessary
 	_, isEncrypted, err := gauth.ReadConfigFile(cfgPath)
 
+	if err != nil {
+		log.Fatalf("Reading config: %v", err)
+	}
+
 	password, err := []byte(nil), nil
 
 	if isEncrypted {
 		password, err = getPassword()
 
 		if err != nil {
-			log.Fatalf("reading passphrase: %v", err)
+			log.Fatalf("Reading passphrase: %v", err)
 		}
 	}
 

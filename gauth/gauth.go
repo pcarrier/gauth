@@ -12,7 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
-	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 
@@ -78,7 +78,7 @@ func CodesAtTimeStep(u *otpauth.URL, timeStep uint64) (prev, curr, next string, 
 // ReadConfigFile reads the config file at path and returns its contents and
 // whether it is encrypted or not
 func ReadConfigFile(path string) ([]byte, bool, error) {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, false, err
 	}
@@ -184,7 +184,7 @@ func WriteConfigFile(path string, passwd []byte, newConfig []byte) error {
 		newConfig = append(saltedPrefix, newConfig...)
 	}
 
-	err = ioutil.WriteFile(path, newConfig, 0)
+	err = os.WriteFile(path, newConfig, 0)
 
 	if err != nil {
 		return fmt.Errorf("writing config: %v", err)
