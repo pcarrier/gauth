@@ -1,3 +1,5 @@
+# github.com/atotto/clipboard v0.1.4
+github.com/atotto/clipboard
 # github.com/creachadair/otp v0.4.0
 github.com/creachadair/otp
 github.com/creachadair/otp/otpauth
