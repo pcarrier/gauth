@@ -146,6 +146,9 @@ func (c Config) format(v []byte, nd int) string {
 
 // Truncate truncates the specified digest using the algorithm from RFC 4226.
 // Only the low-order 31 bits of the value are populated; the rest are zero.
+//
+// Note that RFC 6238 stipulates the same truncation algorithm regardless of
+// the length of the chosen digest.
 func Truncate(digest []byte) uint64 {
 	offset := digest[len(digest)-1] & 0x0f
 	code := (uint64(digest[offset]&0x7f) << 24) |
