@@ -91,7 +91,7 @@ Encryption
         LastPass   915200 479333 408710
 
 Note that this encryption mechanism is far from ideal from a pure security standpoint.
-Please read [OpenSSL's notes on the subject](http://www.openssl.org/docs/crypto/EVP_BytesToKey.html#NOTES).
+Please read [OpenSSL's notes on the subject](https://www.openssl.org/docs/man3.2/man3/EVP_BytesToKey.html#NOTES).
 
 Compatibility
 -------------
