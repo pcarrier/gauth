@@ -114,6 +114,7 @@ Tested with:
 - Okta (reported by Bryan Baldwin)
 - WP.com
 - bittrex.com
+- Ügyfélkapu+
 - poloniex.com
 
 Please report further results to pc@rrier.ca.
