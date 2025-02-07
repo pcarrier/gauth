@@ -5,7 +5,7 @@ on:
     branches:
       - main
     tags:
-      - '*'
+      - "*"
   pull_request:
     types: [opened, reopened, synchronize]
 
@@ -22,7 +22,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.21
+          go-version: 1.23
 
       - name: Run GoReleaser release (SKIP publish)
         uses: goreleaser/goreleaser-action@v5
