@@ -1,3 +1,4 @@
+// Package main implements a command-line TOTP (Time-based One-Time Password) generator
 package main
 
 import (
@@ -5,259 +6,392 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/user"
 	"path/filepath"
 	"strings"
 	"syscall"
 	"text/tabwriter"
+	"time"
 
 	"github.com/creachadair/otp/otpauth"
 	"github.com/pcarrier/gauth/gauth"
 	"golang.org/x/term"
 )
 
-func main() {
-	accountName := ""
-	argument := ""
+type command struct {
+	name        string
+	shortFlag   string
+	longFlags   []string
+	description string
+	handler     func(string, []*otpauth.URL)
+}
 
-	if len(os.Args) > 1 {
+var commands = []command{
+	{
+		name:        "bare",
+		shortFlag:   "-b",
+		longFlags:   []string{"-bare", "--bare"},
+		description: "Print bare code for account",
+		handler:     func(acc string, urls []*otpauth.URL) { printBareCode(acc, urls) },
+	},
+	{
+		name:        "add",
+		shortFlag:   "-a",
+		longFlags:   []string{"-add", "--add"},
+		description: "Add new account",
+		handler:     func(acc string, _ []*otpauth.URL) { addCode(acc) },
+	},
+	{
+		name:        "remove",
+		shortFlag:   "-r",
+		longFlags:   []string{"-remove", "--remove"},
+		description: "Remove account",
+		handler:     func(acc string, _ []*otpauth.URL) { removeCode(acc) },
+	},
+	{
+		name:        "secret",
+		shortFlag:   "-s",
+		longFlags:   []string{"-secret", "--secret"},
+		description: "Show secret for account",
+		handler:     func(acc string, urls []*otpauth.URL) { printSecret(acc, urls) },
+	},
+}
+
+var (
+	cachedRaw  []byte
+	cachedUrls []*otpauth.URL
+)
+
+func findCommand(arg string) *command {
+	for i := range commands {
+		if arg == commands[i].shortFlag {
+			return &commands[i]
+		}
+		for _, f := range commands[i].longFlags {
+			if arg == f {
+				return &commands[i]
+			}
+		}
+	}
+	return nil
+}
+
+func printUsage() {
+	fmt.Println("Usage: gauth [account] [command]")
+	fmt.Println("\nCommands:")
+	for _, cmd := range commands {
+		flags := append([]string{cmd.shortFlag}, cmd.longFlags...)
+		fmt.Printf("  %-25s %s\n", strings.Join(flags, ", "), cmd.description)
+	}
+	fmt.Println("\nExamples:")
+	fmt.Println("  gauth                     # Show all codes")
+	fmt.Println("  gauth github              # Show codes for an account (partial matches supported)")
+	fmt.Println("  gauth github -b           # Show current code for an account")
+	fmt.Println("  gauth github --add        # Add new account")
+}
+
+func isHelpFlag(arg string) bool {
+	return arg == "-h" || arg == "--help"
+}
+
+func shouldShowHelp() bool {
+	for _, a := range os.Args[1:] {
+		if isHelpFlag(a) {
+			return true
+		}
+	}
+	cfgPath := getConfigPath()
+	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
+		// Show help if no config exists unless the user is adding a new account.
+		if len(os.Args) > 2 {
+			if cmd := findCommand(os.Args[2]); cmd != nil && cmd.name == "add" {
+				return false
+			}
+		}
+		fmt.Printf("No config file found at %s\n\n", cfgPath)
+		return true
+	}
+	return false
+}
+
+func matchAccount(pattern, account string) bool {
+	return strings.Contains(strings.ToLower(account), strings.ToLower(pattern))
+}
+
+func main() {
+	if shouldShowHelp() {
+		printUsage()
+		return
+	}
+
+	var accountName string
+	if len(os.Args) > 1 && !isHelpFlag(os.Args[1]) {
 		accountName = os.Args[1]
 	}
 
+	// Handle commands or show all codes
+	var cmd *command
 	if len(os.Args) > 2 {
-		if os.Args[2] == "-b" || os.Args[2] == "-bare" {
-			argument = "bare"
-		} else if os.Args[2] == "-a" || os.Args[2] == "-add" {
-			argument = "add"
-		} else if os.Args[2] == "-r" || os.Args[2] == "-remove" {
-			argument = "remove"
-		} else if os.Args[2] == "-s" || os.Args[2] == "-secret" {
-			argument = "secret"
-		}
+		cmd = findCommand(os.Args[2])
 	}
 
-	if accountName != "" {
-		switch argument {
-		case "bare":
-			printBareCode(accountName, getUrls())
-			return
-		case "add":
-			addCode(accountName)
-			return
-		case "remove":
-			removeCode(accountName)
-			return
-		case "secret":
-			printSecret(accountName, getUrls())
-			return
-		default:
-			printAllCodes(getUrls())
-			return
+	if cmd != nil {
+		var urls []*otpauth.URL
+		if cmd.name != "add" {
+			// Only load existing URLs if we're not adding a new account
+			urls = getUrls()
 		}
+		cmd.handler(accountName, urls)
+		return
 	}
 
+	// Default behavior
 	printAllCodes(getUrls())
 }
 
 func getPassword() ([]byte, error) {
-	fmt.Printf("Encryption password: ")
+	fmt.Print("Encryption password: ")
 	defer fmt.Println()
 	return term.ReadPassword(int(syscall.Stdin))
 }
 
 func getConfigPath() string {
-	cfgPath := os.Getenv("GAUTH_CONFIG")
-	if cfgPath == "" {
-		user, err := user.Current()
-		if err != nil {
-			log.Fatal(err)
-		}
-		cfgPath = filepath.Join(user.HomeDir, ".config", "gauth.csv")
+	if cfg := os.Getenv("GAUTH_CONFIG"); cfg != "" {
+		return cfg
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatalf("Getting home directory: %v", err)
+	}
+	return filepath.Join(home, ".config", "gauth.csv")
+}
+
+func loadConfig() error {
+	if cachedRaw != nil {
+		return nil
 	}
 
-	return cfgPath
+	cfgPath := getConfigPath()
+	raw, err := gauth.LoadConfigFile(cfgPath, getPassword)
+	if err != nil {
+		return fmt.Errorf("loading config: %v", err)
+	}
+
+	urls, err := gauth.ParseConfig(raw)
+	if err != nil {
+		return fmt.Errorf("parsing config: %v", err)
+	}
+
+	cachedRaw = raw
+	cachedUrls = urls
+	return nil
 }
 
 func getUrls() []*otpauth.URL {
-	cfgPath := getConfigPath()
-
-	cfgContent, err := gauth.LoadConfigFile(cfgPath, getPassword)
-	if err != nil {
-		log.Fatalf("Loading config: %v", err)
+	if err := loadConfig(); err != nil {
+		log.Fatal(err)
 	}
+	return cachedUrls
+}
 
-	urls, err := gauth.ParseConfig(cfgContent)
-	if err != nil {
-		log.Fatalf("Decoding configuration file: %v", err)
+func getRawConfig() []byte {
+	if err := loadConfig(); err != nil {
+		log.Fatal(err)
 	}
-
-	return urls
+	return cachedRaw
 }
 
 func printBareCode(accountName string, urls []*otpauth.URL) {
 	for _, url := range urls {
-		if strings.EqualFold(strings.ToLower(accountName), strings.ToLower(url.Account)) {
+		if matchAccount(accountName, url.Account) {
 			_, curr, _, err := gauth.Codes(url)
 			if err != nil {
 				log.Fatalf("Generating codes for %q: %v", url.Account, err)
 			}
 			fmt.Print(curr)
-			break
+			return
+		}
+	}
+}
+
+func printSecret(accountName string, urls []*otpauth.URL) {
+	for _, url := range urls {
+		if matchAccount(accountName, url.Account) {
+			fmt.Print(url.RawSecret)
+			return
 		}
 	}
 }
 
 func addCode(accountName string) {
 	cfgPath := getConfigPath()
-
-	// Check for encryption and ask for password if necessary
-	_, isEncrypted, err := gauth.ReadConfigFile(cfgPath)
-
-	if err != nil {
-		log.Fatalf("Reading config: %v", err)
+	if err := os.MkdirAll(filepath.Dir(cfgPath), 0700); err != nil {
+		log.Fatalf("Creating config directory: %v", err)
 	}
 
-	password, err := []byte(nil), nil
-
-	if isEncrypted {
-		password, err = getPassword()
-
-		if err != nil {
-			log.Fatalf("reading passphrase: %v", err)
-		}
+	password, err := handleEncryption(cfgPath)
+	if err != nil && !os.IsNotExist(err) {
+		log.Fatalf("Handling encryption: %v", err)
 	}
 
-	// Get decoded config
-	rawConfig, err := gauth.LoadConfigFile(cfgPath, func() ([]byte, error) { return password, err })
-	if err != nil {
-		log.Fatalf("Loading config: %v", err)
-	}
-
-	newConfig := strings.TrimSuffix(string(rawConfig), "\n")
-
-	// Check if account already exists
-	for _, line := range strings.Split(newConfig, "\n") {
-		if strings.HasPrefix(strings.ToLower(line), strings.ToLower(accountName)) {
-			fmt.Printf("Account \"%s\" already exists. Nothing has been added.", accountName)
+	var rawConfig []byte
+	if _, statErr := os.Stat(cfgPath); os.IsNotExist(statErr) {
+		rawConfig = []byte("")
+	} else {
+		rawConfig = getRawConfig()
+		if accountExists(accountName, rawConfig) {
+			fmt.Printf("Account %q already exists. Nothing added.\n", accountName)
 			return
 		}
 	}
 
-	// Read new key
-	fmt.Printf("Key for %s: ", accountName)
-	reader := bufio.NewReader(os.Stdin)
-	key, _ := reader.ReadString('\n')
-
-	// Append new key
-	newConfig += "\n" + accountName + ":" + key + "\n"
-
-	// Try parsing the new config and print the current OTP
-	parsedConfig, err := gauth.ParseConfig([]byte(newConfig))
-	if err != nil {
-		log.Fatalf("Parsing new config: %v", err)
+	key := readNewKey(accountName)
+	newConfig := updateConfig(string(rawConfig), accountName, key)
+	if err := validateAndSaveConfig(cfgPath, password, newConfig, accountName); err != nil {
+		log.Fatalf("Saving config: %v", err)
 	}
-
-	fmt.Printf("Current OTP for %s: ", accountName)
-	printBareCode(accountName, parsedConfig)
-
-	// write new config
-	err = gauth.WriteConfigFile(cfgPath, password, []byte(newConfig))
-	if err != nil {
-		log.Fatalf("Error writing new config: %v", err)
-	}
+	cachedRaw = nil // Invalidate cache
+	cachedUrls = nil
 }
 
 func removeCode(accountName string) {
 	cfgPath := getConfigPath()
-
-	// Check for encryption and ask for password if necessary
-	_, isEncrypted, err := gauth.ReadConfigFile(cfgPath)
-
+	password, err := handleEncryption(cfgPath)
 	if err != nil {
 		log.Fatalf("Reading config: %v", err)
 	}
-
-	password, err := []byte(nil), nil
-
-	if isEncrypted {
-		password, err = getPassword()
-
-		if err != nil {
-			log.Fatalf("Reading passphrase: %v", err)
-		}
+	rawConfig := getRawConfig()
+	newConfig, removed := buildNewConfig(accountName, rawConfig)
+	if !removed {
+		fmt.Printf("Account %q not found. Nothing removed.\n", accountName)
+		return
 	}
-
-	// Get decoded config
-	rawConfig, err := gauth.LoadConfigFile(cfgPath, func() ([]byte, error) { return password, err })
-	if err != nil {
-		log.Fatalf("Loading config: %v", err)
+	if !confirmRemoval(accountName) {
+		return
 	}
+	if err := gauth.WriteConfigFile(cfgPath, password, []byte(newConfig)); err != nil {
+		log.Fatalf("Error writing config: %v", err)
+	}
+	cachedRaw = nil
+	cachedUrls = nil
+	fmt.Printf("%s has been removed.\n", accountName)
+}
 
-	newConfig := ""
-	anythingRemoved := false
-
-	// Iterate over config lines and search for the one to be removed
+func buildNewConfig(accountName string, rawConfig []byte) (string, bool) {
+	var builder strings.Builder
+	removed := false
 	for _, line := range strings.Split(string(rawConfig), "\n") {
 		trim := strings.TrimSpace(line)
 		if trim == "" {
 			continue
 		}
-
-		if strings.HasPrefix(strings.ToLower(trim), strings.ToLower(accountName)) {
-			anythingRemoved = true
-			continue
+		parts := strings.SplitN(trim, ":", 2)
+		if len(parts) > 0 {
+			accName := strings.TrimSpace(parts[0])
+			if matchAccount(accountName, accName) {
+				removed = true
+				continue
+			}
 		}
-
-		newConfig += trim + "\n"
-
+		builder.WriteString(trim)
+		builder.WriteByte('\n')
 	}
-
-	if !anythingRemoved {
-		fmt.Printf("Account \"%s\" was not found. Nothing has been removed.", accountName)
-		return
-	}
-
-	// Prompt for confirmation
-	fmt.Printf("Are you sure you want to remove %s [y/N]: ", accountName)
-	reader := bufio.NewReader(os.Stdin)
-	confirmation, _ := reader.ReadString('\n')
-
-	confirmation = strings.TrimSpace(confirmation)
-
-	if strings.ToLower(confirmation) != "y" {
-		return
-	}
-
-	// Write the new config
-	err = gauth.WriteConfigFile(cfgPath, password, []byte(newConfig))
-	if err != nil {
-		log.Fatalf("Error writing new config: %v", err)
-	}
-
-	fmt.Printf("%s has been removed.", accountName)
+	return builder.String(), removed
 }
 
-func printSecret(accountName string, urls []*otpauth.URL) {
-	for _, url := range urls {
-		if strings.EqualFold(strings.ToLower(accountName), strings.ToLower(url.Account)) {
-			fmt.Print(url.RawSecret)
-			break
+func confirmRemoval(accountName string) bool {
+	fmt.Printf("Are you sure you want to remove %s [y/N]: ", accountName)
+	reader := bufio.NewReader(os.Stdin)
+	resp, _ := reader.ReadString('\n')
+	return strings.ToLower(strings.TrimSpace(resp)) == "y"
+}
+
+func updateConfig(currentConfig, accountName, key string) string {
+	var builder strings.Builder
+	builder.WriteString(strings.TrimSuffix(currentConfig, "\n"))
+	builder.WriteByte('\n')
+	builder.WriteString(accountName)
+	builder.WriteByte(':')
+	builder.WriteString(key)
+	builder.WriteByte('\n')
+	return builder.String()
+}
+
+func validateAndSaveConfig(cfgPath string, password []byte, newConfig, accountName string) error {
+	parsedCfg, err := gauth.ParseConfig([]byte(newConfig))
+	if err != nil {
+		return fmt.Errorf("parsing new config: %v", err)
+	}
+	fmt.Printf("Current OTP for %s: ", accountName)
+	printBareCode(accountName, parsedCfg)
+	return gauth.WriteConfigFile(cfgPath, password, []byte(newConfig))
+}
+
+func accountExists(accountName string, rawConfig []byte) bool {
+	for _, line := range strings.Split(string(rawConfig), "\n") {
+		trim := strings.TrimSpace(line)
+		if trim == "" {
+			continue
+		}
+		parts := strings.SplitN(trim, ":", 2)
+		if len(parts) < 2 {
+			continue
+		}
+		if matchAccount(accountName, strings.TrimSpace(parts[0])) {
+			return true
 		}
 	}
+	return false
+}
+
+func handleEncryption(cfgPath string) ([]byte, error) {
+	_, isEncrypted, err := gauth.ReadConfigFile(cfgPath)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+	if !isEncrypted {
+		return nil, nil
+	}
+	pass, err := getPassword()
+	if err != nil {
+		return nil, fmt.Errorf("reading passphrase: %v", err)
+	}
+	return pass, nil
 }
 
 func printAllCodes(urls []*otpauth.URL) {
-	_, progress := gauth.IndexNow() // TODO: do this per-code
-
 	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 1, ' ', 0)
-	fmt.Fprintln(tw, "\tprev\tcurr\tnext")
+	if _, err := fmt.Fprintln(tw, "\tprev\tcurr\tnext\tprog"); err != nil {
+		log.Fatalf("Writing header: %v", err)
+	}
 	for _, url := range urls {
 		prev, curr, next, err := gauth.Codes(url)
 		if err != nil {
 			log.Fatalf("Generating codes for %q: %v", url.Account, err)
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", url.Account, prev, curr, next)
+		period := url.Period
+		if period == 0 {
+			period = gauth.DefaultPeriod
+		}
+		elapsed := int(time.Now().Unix() % int64(period))
+		progress := makeProgressBar(elapsed, period)
+		if _, err := fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", url.Account, prev, curr, next, progress); err != nil {
+			log.Fatalf("Writing codes: %v", err)
+		}
 	}
-	tw.Flush()
-	fmt.Printf("[%-29s]\n", strings.Repeat("=", progress))
+	if err := tw.Flush(); err != nil {
+		log.Fatalf("Flushing output: %v", err)
+	}
+}
+
+func makeProgressBar(elapsed, period int) string {
+	const width = 10
+	filled := int(float64(elapsed) / float64(period) * float64(width))
+	return "[" + strings.Repeat("=", filled) + strings.Repeat(" ", width-filled) + "]"
+}
+
+func readNewKey(accountName string) string {
+	fmt.Printf("Key for %s: ", accountName)
+	reader := bufio.NewReader(os.Stdin)
+	key, _ := reader.ReadString('\n')
+	return strings.TrimSpace(key)
 }

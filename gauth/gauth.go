@@ -14,18 +14,20 @@ import (
 	"hash"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/creachadair/otp"
 	"github.com/creachadair/otp/otpauth"
 )
 
-// IndexNow returns the current 30-second time step, and the number of seconds
-// remaining until it ends.
-func IndexNow() (uint64, int) {
-	t := time.Now().Unix()
-	return uint64(t / 30), int(t % 30)
-}
+const (
+	saltedPrefix  = "Salted__"
+	aesKeySize    = 16
+	DefaultPeriod = 30
+	blockSize     = 16
+	saltOffset    = 8
+	saltSize      = 8 // 16 - saltOffset
+	minPadding    = 1
+)
 
 // pickAlgorithm returns a constructor for the named hash function, or
 // an error if the name is not a supported algorithm.
@@ -45,11 +47,10 @@ func pickAlgorithm(name string) (func() hash.Hash, error) {
 // Codes returns the previous, current, and next codes from u.
 func Codes(u *otpauth.URL) (prev, curr, next string, _ error) {
 	var ts uint64
-	if u.Period > 0 {
-		ts = otp.TimeWindow(u.Period)()
-	} else {
-		ts, _ = IndexNow()
+	if u.Period == 0 {
+		u.Period = DefaultPeriod
 	}
+	ts = otp.TimeWindow(u.Period)()
 	return CodesAtTimeStep(u, ts)
 }
 
@@ -83,7 +84,7 @@ func ReadConfigFile(path string) ([]byte, bool, error) {
 		return nil, false, err
 	}
 
-	if bytes.HasPrefix(data, []byte("Salted__")) {
+	if bytes.HasPrefix(data, []byte(saltedPrefix)) {
 		return data, true, nil // encrypted
 	}
 
@@ -94,29 +95,33 @@ func ReadConfigFile(path string) ([]byte, bool, error) {
 // The getPass function is called to obtain a password if needed.
 func LoadConfigFile(path string, getPass func() ([]byte, error)) ([]byte, error) {
 	data, isEncrypted, err := ReadConfigFile(path)
-
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("reading config file: %v", err)
 	}
 
 	if !isEncrypted {
-		return data, nil // not encrypted
+		return data, nil
 	}
 
-	// Support for 'openssl enc -aes-128-cbc -md sha256 -pass pass:'
 	passwd, err := getPass()
 	if err != nil {
 		return nil, fmt.Errorf("reading passphrase: %v", err)
 	}
 
-	salt := data[8:16]
-	rest := data[16:]
-	salting := sha256.New()
-	salting.Write(passwd)
-	salting.Write(salt)
-	sum := salting.Sum(nil)
-	key := sum[:16]
-	iv := sum[16:]
+	return decryptConfig(data, passwd)
+}
+
+// decryptConfig handles the decryption of encrypted configuration data
+func decryptConfig(data, passwd []byte) ([]byte, error) {
+	if len(data) < saltOffset+saltSize {
+		return nil, errors.New("encrypted data too short")
+	}
+
+	salt := data[saltOffset : saltOffset+saltSize]
+	rest := data[saltOffset+saltSize:]
+
+	key, iv := deriveKeyAndIV(passwd, salt)
+
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("creating cipher: %v", err)
@@ -125,116 +130,131 @@ func LoadConfigFile(path string, getPass func() ([]byte, error)) ([]byte, error)
 	mode := cipher.NewCBCDecrypter(block, iv)
 	mode.CryptBlocks(rest, rest)
 
-	// Remove CBC padding and verify that the key was valid.
-	pad := int(rest[len(rest)-1])
-	if pad == 0 || pad > len(rest) {
+	return removePadding(rest)
+}
+
+// deriveKeyAndIV generates the key and IV from password and salt
+func deriveKeyAndIV(passwd, salt []byte) (key, iv []byte) {
+	salting := sha256.New()
+	salting.Write(passwd)
+	salting.Write(salt)
+	sum := salting.Sum(nil)
+	return sum[:blockSize], sum[blockSize:]
+}
+
+// removePadding removes and validates PKCS#7 padding
+func removePadding(data []byte) ([]byte, error) {
+	if len(data) == 0 {
+		return nil, errors.New("empty data")
+	}
+
+	pad := int(data[len(data)-1])
+	if pad < minPadding || pad > blockSize || pad > len(data) {
 		return nil, errors.New("invalid decryption key")
 	}
-	for i := len(rest) - pad; i < len(rest); i++ {
-		if int(rest[i]) != pad {
+
+	for i := len(data) - pad; i < len(data); i++ {
+		if int(data[i]) != pad {
 			return nil, errors.New("invalid block padding")
 		}
 	}
-	return rest[:len(rest)-pad], nil
+
+	return data[:len(data)-pad], nil
 }
 
 // WriteConfigFile encrypts the provided newConfig using passwd, if necessary,
 // and writes it to path
 func WriteConfigFile(path string, passwd []byte, newConfig []byte) error {
 	data, isEncrypted, err := ReadConfigFile(path)
-
 	if err != nil {
-		return err
+		if os.IsNotExist(err) {
+			// If the file doesn't exist, treat it as non-encrypted
+			isEncrypted = false
+		} else {
+			return fmt.Errorf("reading config file: %v", err)
+		}
 	}
 
-	if isEncrypted {
-		// Encrypt newConfig using the same salt as in the old config
-		salt := data[8:16]
-		salting := sha256.New()
-		salting.Write(passwd)
-		salting.Write(salt)
-		sum := salting.Sum(nil)
-		key := sum[:16]
-		iv := sum[16:]
-
-		block, err := aes.NewCipher(key)
-
-		if err != nil {
-			return fmt.Errorf("creating cipher: %v", err)
-		}
-
-		mode := cipher.NewCBCEncrypter(block, iv)
-
-		// Add needed CBC block padding
-		padLength := 16 - (len(newConfig) % 16)
-		pad := make([]byte, padLength)
-
-		for i := range pad {
-			pad[i] = byte(padLength)
-		}
-
-		newConfig = append(newConfig, pad...)
-
-		// Encrypt and construct the new data to be written
-		mode.CryptBlocks(newConfig, newConfig)
-
-		saltedPrefix := []byte("Salted__")
-		saltedPrefix = append(saltedPrefix, salt...)
-
-		newConfig = append(saltedPrefix, newConfig...)
+	if !isEncrypted {
+		return os.WriteFile(path, newConfig, 0600)
 	}
 
-	err = os.WriteFile(path, newConfig, 0)
-
+	encryptedConfig, err := encryptConfig(data[8:16], passwd, newConfig)
 	if err != nil {
-		return fmt.Errorf("writing config: %v", err)
+		return fmt.Errorf("encrypting config: %v", err)
 	}
 
-	return err
+	return os.WriteFile(path, encryptedConfig, 0600)
 }
 
-// ParseConfig parses the contents of data as a gauth configuration file.  Each
-// line of the file specifies a single configuration.
-//
-// The basic configuration format is:
-//
-//	name:secret
-//
-// where "name" is the site name and "secret" is the base32-encoded secret.
-// This represents a default Google authenticator code with 6 digits and a
-// 30-second refresh.
-//
-// Otherwise, a line must be a URL in the format:
-//
-//	otpauth://TYPE/LABEL?PARAMETERS
+func encryptConfig(salt, passwd, config []byte) ([]byte, error) {
+	salting := sha256.New()
+	salting.Write(passwd)
+	salting.Write(salt)
+	sum := salting.Sum(nil)
+
+	key := sum[:aesKeySize]
+	iv := sum[aesKeySize:]
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("creating cipher: %v", err)
+	}
+
+	// Add padding
+	padLength := blockSize - (len(config) % blockSize)
+	paddedConfig := append(config, bytes.Repeat([]byte{byte(padLength)}, padLength)...)
+
+	// Encrypt
+	mode := cipher.NewCBCEncrypter(block, iv)
+	mode.CryptBlocks(paddedConfig, paddedConfig)
+
+	// Construct final output
+	return append([]byte(saltedPrefix+string(salt)), paddedConfig...), nil
+}
+
+// ParseConfig parses the contents of data as a gauth configuration file.
+// Returns a slice of otpauth URLs representing the parsed configurations.
 func ParseConfig(data []byte) ([]*otpauth.URL, error) {
 	var out []*otpauth.URL
-	for ln, line := range strings.Split(string(data), "\n") {
+	lines := strings.Split(string(data), "\n")
+
+	for i, line := range lines {
 		trim := strings.TrimSpace(line)
 		if trim == "" {
-			continue // skip blank lines
-		}
-
-		// URL format.
-		if strings.HasPrefix(trim, "otpauth://") {
-			u, err := otpauth.ParseURL(trim)
-			if err != nil {
-				return nil, fmt.Errorf("line %d: invalid otpauth URL: %v", ln+1, err)
-			}
-			out = append(out, u)
 			continue
 		}
 
-		// Simple format (name:secret)
-		parts := strings.SplitN(trim, ":", 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("line %d: invalid format (want name:secret)", ln+1)
+		url, err := parseConfigLine(trim, i+1)
+		if err != nil {
+			return nil, err
 		}
-		out = append(out, &otpauth.URL{
-			Type:      "totp",
-			Account:   strings.TrimSpace(parts[0]),
-			RawSecret: strings.TrimSpace(parts[1]),
-		})
+
+		if url != nil {
+			out = append(out, url)
+		}
 	}
 	return out, nil
+}
+
+// parseConfigLine parses a single line of configuration
+func parseConfigLine(line string, lineNum int) (*otpauth.URL, error) {
+	if strings.HasPrefix(line, "otpauth://") {
+		u, err := otpauth.ParseURL(line)
+		if err != nil {
+			return nil, fmt.Errorf("line %d: invalid otpauth URL: %v", lineNum, err)
+		}
+		return u, nil
+	}
+
+	parts := strings.SplitN(line, ":", 2)
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("line %d: invalid format (want name:secret)", lineNum)
+	}
+
+	return &otpauth.URL{
+		Type:      "totp",
+		Account:   strings.TrimSpace(parts[0]),
+		RawSecret: strings.TrimSpace(parts[1]),
+	}, nil
 }

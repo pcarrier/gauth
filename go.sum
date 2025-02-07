@@ -1,7 +1,17 @@
+github.com/creachadair/mds v0.21.3/go.mod h1:1ltMWZd9yXhaHEoZwBialMaviWVUpRPvMwVP7saFAzM=
 github.com/creachadair/otp v0.4.0 h1:3PBnESxegU3hQ0D447D75lSnTtTVfw6Eny8GviOXcqM=
 github.com/creachadair/otp v0.4.0/go.mod h1:mDkCUSoWN8zqxFoDMw20Boe6xeDd1jJuy6pNQQ4lCy4=
+github.com/creachadair/otp v0.5.0 h1:q3Th7CXm2zlmCdBjw5tEPFOj4oWJMnVL5HXlq0sNKS0=
+github.com/creachadair/otp v0.5.0/go.mod h1:0kceI87EnYFNYSTL121goJVAnk3eJhaed9H0nMuJUkA=
+github.com/creachadair/wirepb v0.0.0-20241211162510-f7f2e8a40ddc h1:eEmY60ZlUMsvNX1AiVR6WdVY5b+WhAATf3opftu6LP0=
+github.com/creachadair/wirepb v0.0.0-20241211162510-f7f2e8a40ddc/go.mod h1:dHvCVZSsk3Y/fhY0mUex0U2XBZszomOe7PzlghOtHnQ=
+github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.1.0 h1:kunALQeHf1/185U1i0GOB/fy1IPRDDpuoOOqRReG57U=
 golang.org/x/sys v0.1.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.30.0 h1:QjkSwP/36a20jFYWkSue1YwXzLmsV5Gfq7Eiy72C1uc=
+golang.org/x/sys v0.30.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
 golang.org/x/term v0.1.0 h1:g6Z6vPFA9dYBAF7DWcH6sCcOntplXsDKcliusYijMlw=
 golang.org/x/term v0.1.0/go.mod h1:jbD1KX2456YbFQfuXm/mYQcufACuNUgVhRMnK/tPxf8=
+golang.org/x/term v0.29.0 h1:L6pJp37ocefwRRtYPKSWOWzOtWSxVajvz2ldH/xi3iU=
+golang.org/x/term v0.29.0/go.mod h1:6bl4lRlvVuDgSf3179VpIxBF0o10JUpXWOnI7nErv7s=

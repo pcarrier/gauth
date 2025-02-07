@@ -60,7 +60,7 @@ func (u *URL) String() string {
 	// Encode parameters if there are any non-default values.
 	var params []string
 	if a := strings.ToUpper(u.Algorithm); a != "" && a != "SHA1" {
-		params = append(params, "algorithm="+url.PathEscape(a))
+		params = append(params, "algorithm="+queryEscape(a))
 	}
 	if c := u.Counter; c > 0 || typ == "hotp" {
 		params = append(params, "counter="+strconv.FormatUint(c, 10))
@@ -69,14 +69,14 @@ func (u *URL) String() string {
 		params = append(params, "digits="+strconv.Itoa(d))
 	}
 	if o := u.Issuer; o != "" {
-		params = append(params, "issuer="+url.PathEscape(o))
+		params = append(params, "issuer="+queryEscape(o))
 	}
 	if p := u.Period; p > 0 && p != defaultPeriod {
 		params = append(params, "period="+strconv.Itoa(p))
 	}
 	if s := u.RawSecret; s != "" {
 		enc := strings.ToUpper(strings.Join(strings.Fields(strings.TrimRight(s, "=")), ""))
-		params = append(params, "secret="+url.PathEscape(enc))
+		params = append(params, "secret="+queryEscape(enc))
 	}
 	if len(params) != 0 {
 		sb.WriteByte('?')
@@ -182,7 +182,7 @@ func ParseURL(s string) (*URL, error) {
 		if len(ps) == 1 {
 			ps = append(ps, "") // check value below
 		}
-		value, err := url.PathUnescape(ps[1])
+		value, err := url.QueryUnescape(ps[1])
 		if err != nil {
 			return nil, fmt.Errorf("invalid value: %v", err)
 		}
@@ -218,4 +218,8 @@ func ParseURL(s string) (*URL, error) {
 		}
 	}
 	return out, nil
+}
+
+func queryEscape(s string) string {
+	return strings.ReplaceAll(url.QueryEscape(s), "+", "%20")
 }
