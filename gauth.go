@@ -1,4 +1,3 @@
-// Package main implements a command-line TOTP (Time-based One-Time Password) generator
 package main
 
 import (
@@ -101,7 +100,6 @@ func shouldShowHelp() bool {
 	}
 	cfgPath := getConfigPath()
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
-		// Show help if no config exists unless the user is adding a new account.
 		if len(os.Args) > 2 {
 			if cmd := findCommand(os.Args[2]); cmd != nil && cmd.name == "add" {
 				return false
@@ -128,7 +126,6 @@ func main() {
 		accountName = os.Args[1]
 	}
 
-	// Handle commands or show all codes
 	var cmd *command
 	if len(os.Args) > 2 {
 		cmd = findCommand(os.Args[2])
@@ -137,15 +134,13 @@ func main() {
 	if cmd != nil {
 		var urls []*otpauth.URL
 		if cmd.name != "add" {
-			// Only load existing URLs if we're not adding a new account
 			urls = getUrls()
 		}
 		cmd.handler(accountName, urls)
 		return
 	}
 
-	// Default behavior
-	printAllCodes(getUrls())
+	printCodes(getUrls(), accountName)
 }
 
 func getPassword() ([]byte, error) {
@@ -249,7 +244,7 @@ func addCode(accountName string) {
 	if err := validateAndSaveConfig(cfgPath, password, newConfig, accountName); err != nil {
 		log.Fatalf("Saving config: %v", err)
 	}
-	cachedRaw = nil // Invalidate cache
+	cachedRaw = nil
 	cachedUrls = nil
 }
 
@@ -358,12 +353,15 @@ func handleEncryption(cfgPath string) ([]byte, error) {
 	return pass, nil
 }
 
-func printAllCodes(urls []*otpauth.URL) {
+func printCodes(urls []*otpauth.URL, filter string) {
 	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 1, ' ', 0)
 	if _, err := fmt.Fprintln(tw, "\tprev\tcurr\tnext\tprog"); err != nil {
 		log.Fatalf("Writing header: %v", err)
 	}
 	for _, url := range urls {
+		if filter != "" && !matchAccount(filter, url.Account) {
+			continue
+		}
 		prev, curr, next, err := gauth.Codes(url)
 		if err != nil {
 			log.Fatalf("Generating codes for %q: %v", url.Account, err)
