@@ -6,14 +6,16 @@ gauth: replace Google Authenticator
 Installation
 ------------
 
-With a Go environment already set up, it should be as easy as `go install github.com/pcarrier/gauth@latest`.
+Choose your preferred path.
 
-*Eg,* with `GOPATH=$HOME/go` (its default), it will create a binary `$HOME/go/bin/gauth`.
+- With [brew](https://brew.sh) on Mac, `brew install gauth`.
+
+- With Go installed, `GOBIN=/usr/local/bin go install github.com/pcarrier/gauth@latest`.
 
 Usage
 -----
 
-- In web interfaces, pretend you can't read QR codes, get a secret like `hret 3ij7 kaj4 2jzg` instead.
+- In web interfaces, claim you can't read QR codes, get a secret like `hret 3ij7 kaj4 2jzg` instead.
 - Store one secret per line in `~/.config/gauth.csv`, in the format `name:secret`. For example:
 
         AWS:   ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567
